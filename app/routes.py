@@ -7,7 +7,7 @@ from .db import get_db
 main_bp = Blueprint("main", __name__)
 
 
-TIME_FORMAT = "%H:%M"
+TIME_FORMAT = "%I:%M %p"
 
 
 def _group_slots_by_day(slots):
@@ -53,13 +53,17 @@ def home():
         participant_email = request.form.get("participant_email")
         selected_slots = request.form.get("selected_slots", "")
 
-        if participant_name and participant_email and selected_slots:
-            slots = [s for s in selected_slots.split(",") if s]
-            for day, start_time, end_time in _group_slots_by_day(slots):
-                db.execute(
-                    "INSERT INTO student_blockouts (participant_name, participant_email, day, start_time, end_time, block_type) VALUES (?, ?, ?, ?, ?, ?)",
-                    (participant_name, participant_email, day, start_time, end_time, "Available"),
-                )
+        if participant_name and participant_email:
+            # Delete existing entries for this email
+            db.execute("DELETE FROM student_blockouts WHERE participant_email = ?", (participant_email,))
+            
+            if selected_slots:
+                slots = [s for s in selected_slots.split(",") if s]
+                for day, start_time, end_time in _group_slots_by_day(slots):
+                    db.execute(
+                        "INSERT INTO student_blockouts (participant_name, participant_email, day, start_time, end_time, block_type) VALUES (?, ?, ?, ?, ?, ?)",
+                        (participant_name, participant_email, day, start_time, end_time, "Available"),
+                    )
             db.commit()
 
         return redirect(url_for("main.home"))
