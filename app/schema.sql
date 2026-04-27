@@ -8,3 +8,11 @@ CREATE TABLE IF NOT EXISTS student_blockouts (
     block_type TEXT NOT NULL,
     created_at TEXT DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS professor_settings (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    office_hours_per_week INTEGER DEFAULT 2,
+    professor_blocked_times TEXT DEFAULT '[]',
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP
+);

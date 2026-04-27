@@ -1,0 +1,113 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Admin Settings - Is Anybody Free</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; margin: 0; padding: 12px; background: #f2f5f9; }
+      .card { background: white; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); padding: 20px; width: min(100%, 800px); max-height: calc(100vh - 24px); overflow: auto; }
+      h1 { margin-top: 0; text-align: center; }
+      h2 { border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; margin-top: 0; }
+      .form-group { margin-bottom: 16px; }
+      label { display: block; margin-bottom: 6px; font-weight: bold; }
+      input[type="number"], select { width: 100%; padding: 10px; border: 1px solid #d1d5db; border-radius: 8px; font-size: 14px; }
+      .blocked-time-row { display: flex; gap: 10px; margin-bottom: 10px; align-items: center; }
+      .blocked-time-row select, .blocked-time-row input { flex: 1; }
+      .btn { padding: 10px 20px; border: none; border-radius: 8px; cursor: pointer; font-size: 14px; }
+      .btn-primary { background: #2563eb; color: white; }
+      .btn-secondary { background: #6b7280; color: white; }
+      .btn-danger { background: #dc2626; color: white; padding: 8px 12px; }
+      .btn-add { background: #059669; color: white; margin-top: 10px; }
+      .nav-link { display: inline-block; margin-bottom: 20px; color: #2563eb; text-decoration: none; }
+      .nav-link:hover { text-decoration: underline; }
+      .flash { padding: 10px; border-radius: 8px; margin-bottom: 16px; }
+      .flash-success { background: #d1fae5; color: #065f46; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <a href="{{ url_for('main.admin') }}" class="nav-link">← Back to Admin Dashboard</a>
+      <h1>Admin Settings</h1>
+      
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for category, message in messages %}
+            <div class="flash flash-{{ category }}">{{ message }}</div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      
+      <form method="POST">
+        <div class="section">
+          <h2>Office Hours Configuration</h2>
+          <div class="form-group">
+            <label for="office_hours_per_week">Number of office hour slots per week:</label>
+            <input type="number" id="office_hours_per_week" name="office_hours_per_week" 
+                   value="{{ settings.office_hours_per_week }}" min="1" max="10" required>
+            <p style="color: #6b7280; font-size: 12px; margin-top: 4px;">
+              The algorithm will recommend exactly this many time slots.
+            </p>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h2>Your Unavailable Times</h2>
+          <p style="color: #6b7280; font-size: 14px; margin-bottom: 16px;">
+            Block out times when you are not available for office hours. These will be excluded from recommendations.
+          </p>
+          
+          <div id="blocked-times-container">
+            {% for blocked in blocked_times %}
+            <div class="blocked-time-row">
+              <select name="blocked_day">
+                <option value="">Select day...</option>
+                <option value="Monday" {% if blocked.day == 'Monday' %}selected{% endif %}>Monday</option>
+                <option value="Tuesday" {% if blocked.day == 'Tuesday' %}selected{% endif %}>Tuesday</option>
+                <option value="Wednesday" {% if blocked.day == 'Wednesday' %}selected{% endif %}>Wednesday</option>
+                <option value="Thursday" {% if blocked.day == 'Thursday' %}selected{% endif %}>Thursday</option>
+                <option value="Friday" {% if blocked.day == 'Friday' %}selected{% endif %}>Friday</option>
+              </select>
+              <input type="time" name="blocked_start" value="{{ blocked.start_time }}" placeholder="Start time">
+              <span>to</span>
+              <input type="time" name="blocked_end" value="{{ blocked.end_time }}" placeholder="End time">
+              <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">✕</button>
+            </div>
+            {% endfor %}
+          </div>
+          
+          <button type="button" class="btn btn-add" onclick="addBlockedTime()">+ Add Blocked Time</button>
+        </div>
+        
+        <div style="text-align: center; margin-top: 20px;">
+          <button type="submit" class="btn btn-primary">Save Settings</button>
+        </div>
+      </form>
+    </div>
+    
+    <script>
+      function addBlockedTime() {
+        const container = document.getElementById('blocked-times-container');
+        const row = document.createElement('div');
+        row.className = 'blocked-time-row';
+        row.innerHTML = `
+          <select name="blocked_day">
+            <option value="">Select day...</option>
+            <option value="Monday">Monday</option>
+            <option value="Tuesday">Tuesday</option>
+            <option value="Wednesday">Wednesday</option>
+            <option value="Thursday">Thursday</option>
+            <option value="Friday">Friday</option>
+          </select>
+          <input type="time" name="blocked_start" placeholder="Start time">
+          <span>to</span>
+          <input type="time" name="blocked_end" placeholder="End time">
+          <button type="button" class="btn btn-danger" onclick="this.parentElement.remove()">✕</button>
+        `;
+        container.appendChild(row);
+      }
+    </script>
+  </body>
+</html>
