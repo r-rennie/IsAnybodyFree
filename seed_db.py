@@ -1,153 +1,107 @@
 import sqlite3
 import os
+from werkzeug.security import generate_password_hash
 
 def seed_database():
-    # 100% custom, hand-picked data with 1 to 5 days of availability per student
-    test_entries = [
-        # 5 DAYS A WEEK (Highly Flexible)
-        {"name": "Alice A.", "email": "alice@onu.edu", "day": "Monday", "start": "09:00 AM", "end": "11:00 AM"},
-        {"name": "Alice A.", "email": "alice@onu.edu", "day": "Tuesday", "start": "01:00 PM", "end": "03:00 PM"},
-        {"name": "Alice A.", "email": "alice@onu.edu", "day": "Wednesday", "start": "10:00 AM", "end": "12:00 PM"},
-        {"name": "Alice A.", "email": "alice@onu.edu", "day": "Thursday", "start": "02:00 PM", "end": "04:30 PM"},
-        {"name": "Alice A.", "email": "alice@onu.edu", "day": "Friday", "start": "08:00 AM", "end": "10:30 AM"},
-        
-        {"name": "Julia J.", "email": "julia@onu.edu", "day": "Monday", "start": "12:00 PM", "end": "02:00 PM"},
-        {"name": "Julia J.", "email": "julia@onu.edu", "day": "Tuesday", "start": "09:30 AM", "end": "11:30 AM"},
-        {"name": "Julia J.", "email": "julia@onu.edu", "day": "Wednesday", "start": "02:30 PM", "end": "04:30 PM"},
-        {"name": "Julia J.", "email": "julia@onu.edu", "day": "Thursday", "start": "08:00 AM", "end": "10:00 AM"},
-        {"name": "Julia J.", "email": "julia@onu.edu", "day": "Friday", "start": "01:00 PM", "end": "03:00 PM"},
-
-        {"name": "Zane Z.", "email": "zane@onu.edu", "day": "Monday", "start": "02:00 PM", "end": "05:00 PM"},
-        {"name": "Zane Z.", "email": "zane@onu.edu", "day": "Tuesday", "start": "08:30 AM", "end": "10:30 AM"},
-        {"name": "Zane Z.", "email": "zane@onu.edu", "day": "Wednesday", "start": "11:00 AM", "end": "01:00 PM"},
-        {"name": "Zane Z.", "email": "zane@onu.edu", "day": "Thursday", "start": "01:30 PM", "end": "03:30 PM"},
-        {"name": "Zane Z.", "email": "zane@onu.edu", "day": "Friday", "start": "09:00 AM", "end": "12:00 PM"},
-
-        # 4 DAYS A WEEK
-        {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Monday", "start": "10:00 AM", "end": "12:00 PM"},
-        {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Tuesday", "start": "02:00 PM", "end": "04:00 PM"},
-        {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Wednesday", "start": "08:00 AM", "end": "09:30 AM"},
-        {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Thursday", "start": "11:30 AM", "end": "01:30 PM"},
-
-        {"name": "Nina N.", "email": "nina@onu.edu", "day": "Tuesday", "start": "11:00 AM", "end": "01:00 PM"},
-        {"name": "Nina N.", "email": "nina@onu.edu", "day": "Wednesday", "start": "03:00 PM", "end": "05:00 PM"},
-        {"name": "Nina N.", "email": "nina@onu.edu", "day": "Thursday", "start": "09:00 AM", "end": "11:00 AM"},
-        {"name": "Nina N.", "email": "nina@onu.edu", "day": "Friday", "start": "02:00 PM", "end": "04:00 PM"},
-
-        {"name": "Uma U.", "email": "uma@onu.edu", "day": "Monday", "start": "08:30 AM", "end": "10:30 AM"},
-        {"name": "Uma U.", "email": "uma@onu.edu", "day": "Tuesday", "start": "01:30 PM", "end": "03:30 PM"},
-        {"name": "Uma U.", "email": "uma@onu.edu", "day": "Wednesday", "start": "12:00 PM", "end": "02:00 PM"},
-        {"name": "Uma U.", "email": "uma@onu.edu", "day": "Friday", "start": "10:00 AM", "end": "11:30 AM"},
-
-        {"name": "Yara Y.", "email": "yara@onu.edu", "day": "Monday", "start": "01:00 PM", "end": "03:00 PM"},
-        {"name": "Yara Y.", "email": "yara@onu.edu", "day": "Tuesday", "start": "10:00 AM", "end": "12:00 PM"},
-        {"name": "Yara Y.", "email": "yara@onu.edu", "day": "Wednesday", "start": "09:00 AM", "end": "11:00 AM"},
-        {"name": "Yara Y.", "email": "yara@onu.edu", "day": "Thursday", "start": "03:00 PM", "end": "05:00 PM"},
-
-        # 3 DAYS A WEEK (Average Availability)
-        {"name": "Diana D.", "email": "diana@onu.edu", "day": "Tuesday", "start": "08:00 AM", "end": "10:00 AM"},
-        {"name": "Diana D.", "email": "diana@onu.edu", "day": "Thursday", "start": "12:30 PM", "end": "02:30 PM"},
-        {"name": "Diana D.", "email": "diana@onu.edu", "day": "Friday", "start": "01:30 PM", "end": "03:30 PM"},
-
-        {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Monday", "start": "11:00 AM", "end": "01:00 PM"},
-        {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Wednesday", "start": "01:00 PM", "end": "03:00 PM"},
-        {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Friday", "start": "09:30 AM", "end": "11:30 AM"},
-
-        {"name": "Mike M.", "email": "mike@onu.edu", "day": "Monday", "start": "09:30 AM", "end": "11:30 AM"},
-        {"name": "Mike M.", "email": "mike@onu.edu", "day": "Thursday", "start": "02:30 PM", "end": "04:30 PM"},
-        {"name": "Mike M.", "email": "mike@onu.edu", "day": "Friday", "start": "11:00 AM", "end": "01:00 PM"},
-
-        {"name": "Oscar O.", "email": "oscar@onu.edu", "day": "Monday", "start": "03:00 PM", "end": "05:00 PM"},
-        {"name": "Oscar O.", "email": "oscar@onu.edu", "day": "Wednesday", "start": "08:30 AM", "end": "10:30 AM"},
-        {"name": "Oscar O.", "email": "oscar@onu.edu", "day": "Friday", "start": "02:00 PM", "end": "04:00 PM"},
-
-        {"name": "Rose R.", "email": "rose@onu.edu", "day": "Monday", "start": "08:00 AM", "end": "09:30 AM"},
-        {"name": "Rose R.", "email": "rose@onu.edu", "day": "Tuesday", "start": "12:00 PM", "end": "02:00 PM"},
-        {"name": "Rose R.", "email": "rose@onu.edu", "day": "Thursday", "start": "04:00 PM", "end": "05:30 PM"},
-
-        {"name": "Steve S.", "email": "steve@onu.edu", "day": "Monday", "start": "01:30 PM", "end": "03:30 PM"},
-        {"name": "Steve S.", "email": "steve@onu.edu", "day": "Wednesday", "start": "10:30 AM", "end": "12:30 PM"},
-        {"name": "Steve S.", "email": "steve@onu.edu", "day": "Friday", "start": "08:30 AM", "end": "10:00 AM"},
-
-        {"name": "Tina T.", "email": "tina@onu.edu", "day": "Tuesday", "start": "03:00 PM", "end": "05:00 PM"},
-        {"name": "Tina T.", "email": "tina@onu.edu", "day": "Wednesday", "start": "01:30 PM", "end": "03:30 PM"},
-        {"name": "Tina T.", "email": "tina@onu.edu", "day": "Thursday", "start": "09:30 AM", "end": "11:30 AM"},
-
-        {"name": "Xander X.", "email": "xander@onu.edu", "day": "Wednesday", "start": "11:30 AM", "end": "01:30 PM"},
-        {"name": "Xander X.", "email": "xander@onu.edu", "day": "Thursday", "start": "01:00 PM", "end": "03:00 PM"},
-        {"name": "Xander X.", "email": "xander@onu.edu", "day": "Friday", "start": "03:00 PM", "end": "05:00 PM"},
-
-        {"name": "Dan D.", "email": "dan@onu.edu", "day": "Monday", "start": "10:30 AM", "end": "12:00 PM"},
-        {"name": "Dan D.", "email": "dan@onu.edu", "day": "Tuesday", "start": "02:30 PM", "end": "04:30 PM"},
-        {"name": "Dan D.", "email": "dan@onu.edu", "day": "Thursday", "start": "08:00 AM", "end": "10:00 AM"},
-
-        # 2 DAYS A WEEK
-        {"name": "Charlie C.", "email": "charlie@onu.edu", "day": "Monday", "start": "02:30 PM", "end": "04:30 PM"},
-        {"name": "Charlie C.", "email": "charlie@onu.edu", "day": "Wednesday", "start": "09:00 AM", "end": "10:30 AM"},
-
-        {"name": "George G.", "email": "george@onu.edu", "day": "Wednesday", "start": "02:00 PM", "end": "04:00 PM"},
-        {"name": "George G.", "email": "george@onu.edu", "day": "Friday", "start": "10:30 AM", "end": "12:30 PM"},
-
-        {"name": "Ian I.", "email": "ian@onu.edu", "day": "Tuesday", "start": "09:00 AM", "end": "11:00 AM"},
-        {"name": "Ian I.", "email": "ian@onu.edu", "day": "Thursday", "start": "02:00 PM", "end": "04:00 PM"},
-
-        {"name": "Laura L.", "email": "laura@onu.edu", "day": "Tuesday", "start": "01:00 PM", "end": "03:00 PM"},
-        {"name": "Laura L.", "email": "laura@onu.edu", "day": "Wednesday", "start": "10:00 AM", "end": "11:30 AM"},
-
-        {"name": "Peter P.", "email": "peter@onu.edu", "day": "Tuesday", "start": "11:30 AM", "end": "01:30 PM"},
-        {"name": "Peter P.", "email": "peter@onu.edu", "day": "Thursday", "start": "08:30 AM", "end": "10:30 AM"},
-
-        {"name": "Victor V.", "email": "victor@onu.edu", "day": "Thursday", "start": "03:30 PM", "end": "05:00 PM"},
-        {"name": "Victor V.", "email": "victor@onu.edu", "day": "Friday", "start": "01:00 PM", "end": "03:00 PM"},
-
-        {"name": "Wendy W.", "email": "wendy@onu.edu", "day": "Monday", "start": "09:00 AM", "end": "10:30 AM"},
-        {"name": "Wendy W.", "email": "wendy@onu.edu", "day": "Tuesday", "start": "03:30 PM", "end": "05:00 PM"},
-
-        {"name": "Brian B.", "email": "brian@onu.edu", "day": "Monday", "start": "01:00 PM", "end": "02:30 PM"},
-        {"name": "Brian B.", "email": "brian@onu.edu", "day": "Wednesday", "start": "11:00 AM", "end": "12:30 PM"},
-
-        {"name": "Chloe C.", "email": "chloe@onu.edu", "day": "Thursday", "start": "10:00 AM", "end": "12:00 PM"},
-        {"name": "Chloe C.", "email": "chloe@onu.edu", "day": "Friday", "start": "02:30 PM", "end": "04:30 PM"},
-
-        # 1 DAY A WEEK (The "Hard Constraints")
-        # If your AI algorithm is good, it will be forced to pick times inside these small windows to ensure 100% coverage.
-        {"name": "Amy A.", "email": "amy@onu.edu", "day": "Tuesday", "start": "04:00 PM", "end": "05:00 PM"},
-        {"name": "Bob B.", "email": "bob@onu.edu", "day": "Thursday", "start": "12:00 PM", "end": "02:00 PM"},
-        {"name": "Edward E.", "email": "edward@onu.edu", "day": "Friday", "start": "03:00 PM", "end": "05:00 PM"},
-        {"name": "Kevin K.", "email": "kevin@onu.edu", "day": "Monday", "start": "08:00 AM", "end": "09:30 AM"},
-        {"name": "Quinn Q.", "email": "quinn@onu.edu", "day": "Wednesday", "start": "01:00 PM", "end": "02:30 PM"}
-    ]
-
     try:
+        # Force it to use the exact path Flask is monitoring
         base_dir = os.path.abspath(os.path.dirname(__file__))
         db_path = os.path.join(base_dir, 'instance', 'app.sqlite')
         
+        print(f"SEED SCRIPT IS SAVING HERE: {db_path}") # Make sure this print is here!
+        
         print(f"Connecting to: {db_path}")
-
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        print("Wiping existing table (student_blockouts)...")
-        cursor.execute("DELETE FROM student_blockouts")
+        # 1. WIPE AND REBUILD TABLES USING SCHEMA.SQL
+        print("Locating schema.sql...")
+        
+        base_dir = os.path.abspath(os.path.dirname(__file__))
+        
+        # The script will guess both possible locations
+        path_if_root = os.path.join(base_dir, 'app', 'schema.sql')
+        path_if_app = os.path.join(base_dir, 'schema.sql')
+        
+        if os.path.exists(path_if_root):
+            schema_path = path_if_root
+            print(f"-> Found schema at: {schema_path}")
+        elif os.path.exists(path_if_app):
+            schema_path = path_if_app
+            print(f"-> Found schema at: {schema_path}")
+        else:
+            print(f"CRITICAL ERROR: Could not find schema.sql!")
+            print(f"  Looked here: {path_if_root}")
+            print(f"  Looked here: {path_if_app}")
+            return # Stop the script so it doesn't crash later
+            
+        # Open and run the schema
+        with open(schema_path, 'r') as f:
+            cursor.executescript(f.read())
+
+        # 2. CREATE A TEST PROFESSOR
+        print("Creating Dr. Kropp account...")
+        # We hash the password 'password123' so it's secure
+        hashed_pw = generate_password_hash("password123")
+        cursor.execute(
+            "INSERT INTO professors (name, email, slug, password_hash) VALUES (?, ?, ?, ?)",
+            ("Dr. Kropp", "kropp@onu.edu", "dr-kropp", hashed_pw)
+        )
+        
+        # Grab the ID of the professor we just created (should be 1)
+        prof_id = cursor.lastrowid
+
+        # 3. GIVE DR. KROPP DEFAULT SETTINGS
+        cursor.execute(
+            "INSERT INTO professor_settings (professor_id, office_hours_per_week) VALUES (?, ?)",
+            (prof_id, 5)
+        )
+
+        # 4. INSERT THE CHAOTIC STUDENT DATA LINKED TO DR. KROPP
+        print("Inserting student data...")
+        test_entries = [
+            # 5 DAYS A WEEK
+            {"name": "Alice A.", "email": "alice@onu.edu", "day": "Monday", "start": "09:00 AM", "end": "11:00 AM"},
+            {"name": "Alice A.", "email": "alice@onu.edu", "day": "Tuesday", "start": "01:00 PM", "end": "03:00 PM"},
+            {"name": "Alice A.", "email": "alice@onu.edu", "day": "Wednesday", "start": "10:00 AM", "end": "12:00 PM"},
+            {"name": "Alice A.", "email": "alice@onu.edu", "day": "Thursday", "start": "02:00 PM", "end": "04:30 PM"},
+            {"name": "Alice A.", "email": "alice@onu.edu", "day": "Friday", "start": "08:00 AM", "end": "10:30 AM"},
+            
+            # 4 DAYS A WEEK
+            {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Monday", "start": "10:00 AM", "end": "12:00 PM"},
+            {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Tuesday", "start": "02:00 PM", "end": "04:00 PM"},
+            {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Wednesday", "start": "08:00 AM", "end": "09:30 AM"},
+            {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Thursday", "start": "11:30 AM", "end": "01:30 PM"},
+
+            # 3 DAYS A WEEK 
+            {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Monday", "start": "11:00 AM", "end": "01:00 PM"},
+            {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Wednesday", "start": "01:00 PM", "end": "03:00 PM"},
+            {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Friday", "start": "09:30 AM", "end": "11:30 AM"},
+
+            # 2 DAYS A WEEK
+            {"name": "Ian I.", "email": "ian@onu.edu", "day": "Tuesday", "start": "09:00 AM", "end": "11:00 AM"},
+            {"name": "Ian I.", "email": "ian@onu.edu", "day": "Thursday", "start": "02:00 PM", "end": "04:00 PM"},
+
+            # 1 DAY A WEEK (Hard Constraints)
+            {"name": "Amy A.", "email": "amy@onu.edu", "day": "Tuesday", "start": "04:00 PM", "end": "05:00 PM"},
+            {"name": "Bob B.", "email": "bob@onu.edu", "day": "Thursday", "start": "12:00 PM", "end": "02:00 PM"}
+        ]
 
         query = """
             INSERT INTO student_blockouts 
-            (participant_name, participant_email, day, start_time, end_time, block_type)
-            VALUES (?, ?, ?, ?, ?, ?)
+            (professor_id, participant_name, participant_email, day, start_time, end_time, block_type)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
         """
 
-        print(f"Inserting {len(test_entries)} fully randomized availability blocks for 30 students...")
         for s in test_entries:
-            cursor.execute(query, (s['name'], s['email'], s['day'], s['start'], s['end'], "Available"))
+            cursor.execute(query, (prof_id, s['name'], s['email'], s['day'], s['start'], s['end'], "Available"))
 
         conn.commit()
         conn.close()
-        print("Success! Database is now seeded with chaotic, real-world student data.")
+        print("Success! Database rebuilt with Dr. Kropp and test students.")
 
-    except sqlite3.Error as e:
-        print(f"Database error: {e}")
     except Exception as e:
-        print(f"General error: {e}")
+        print(f"Error: {e}")
 
 if __name__ == "__main__":
     seed_database()

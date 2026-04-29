@@ -20,7 +20,4 @@ def create_app():
     app.register_blueprint(main_bp)
     app.teardown_appcontext(close_db)
 
-    with app.app_context():
-        init_db()
-
     return app

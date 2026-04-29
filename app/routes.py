@@ -6,6 +6,9 @@ from flask import Blueprint, render_template, request, redirect, url_for, flash
 from .db import get_db
 from .services import compute_best_office_hours
 
+from flask import Blueprint, render_template, request, redirect, url_for, flash, session
+from werkzeug.security import check_password_hash
+
 main_bp = Blueprint("main", __name__)
 
 
@@ -92,6 +95,14 @@ def home():
 def admin():
     db = get_db()
 
+    if 'professor_id' not in session:
+        flash("Please log in to view this page.", "warning")
+        return redirect(url_for("main.login"))
+        
+    # Later, when you query the database, you filter by their ID!
+    # Example update to your query:
+    # rows = db.execute("SELECT * FROM student_blockouts WHERE professor_id = ? ORDER BY created_at DESC", (session['professor_id'],)).fetchall()
+
     from flask import current_app
     print(f"FLASK IS LOOKING AT: {current_app.config['DATABASE']}")
 
@@ -153,6 +164,15 @@ def admin():
 @main_bp.route("/admin/settings", methods=["GET", "POST"])
 def admin_settings():
     db = get_db()
+
+    if 'professor_id' not in session:
+        flash("Please log in to view this page.", "warning")
+        return redirect(url_for("main.login"))
+        
+    # Later, when you query the database, you filter by their ID!
+    # Example update to your query:
+    # rows = db.execute("SELECT * FROM student_blockouts WHERE professor_id = ? ORDER BY created_at DESC", (session['professor_id'],)).fetchall()
+
     settings = _get_professor_settings(db)
     
     if request.method == "POST":
@@ -192,3 +212,40 @@ def admin_settings():
         blocked_times = []
     
     return render_template("admin_settings.html", settings=settings, blocked_times=blocked_times)
+
+@main_bp.route("/login", methods=["GET", "POST"])
+def login():
+    if request.method == "POST":
+        email = request.form.get("email")
+        password = request.form.get("password")
+        
+        from flask import current_app
+        print(f"FLASK IS LOOKING HERE: {current_app.config['DATABASE']}")
+        
+        db = get_db()
+        prof = db.execute("SELECT * FROM professors WHERE email = ?", (email,)).fetchone()
+
+        db = get_db()
+        # Find the professor by email
+        prof = db.execute("SELECT * FROM professors WHERE email = ?", (email,)).fetchone()
+        
+        print(f"DEBUG - Did it find Dr. Kropp? {prof is not None}")
+        if prof:
+            print(f"DEBUG - Did the password match? {check_password_hash(prof['password_hash'], password)}")
+
+        # Verify the password matches the hash
+        if prof and check_password_hash(prof['password_hash'], password):
+            session.clear()
+            session['professor_id'] = prof['id']  # Give them their session badge!
+            flash("Successfully logged in.", "success")
+            return redirect(url_for("main.admin"))
+        else:
+            flash("Invalid email or password.", "danger")
+            
+    return render_template("login.html")
+
+@main_bp.route("/logout")
+def logout():
+    session.clear() # Rip up the session badge
+    flash("You have been logged out.", "info")
+    return redirect(url_for("main.login"))
