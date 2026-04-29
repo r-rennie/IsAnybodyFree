@@ -4,18 +4,20 @@ import json
 from collections import defaultdict
 from datetime import datetime, timedelta
 
+def parse_time(time_str):
+    """Try multiple formats to handle '09:00' and '09:00 AM'."""
+    for fmt in ('%I:%M %p', '%H:%M'):
+        try:
+            return datetime.strptime(time_str.strip(), fmt).time()
+        except ValueError:
+            continue
+    raise ValueError(f"Time data '{time_str}' does not match expected formats")
 
 def compute_best_office_hours(student_blockouts, professor_blocked_times=None, office_hours_needed=2):
     """
     Return candidate time slots based on blocked-out student availability.
     
-    Algorithm balances:
-    (a) Percentage of students available during each time slot
-    (b) Ensures variety so all students can attend at least 1 slot
-    
-    Uses a two-phase approach:
-    1. First, ensure each student is covered by at least one slot
-    2. Then, fill remaining slots with highest-scoring candidates
+    Algorithm limits the total scheduled duration to the requested 'office_hours_needed'.
     """
     if not student_blockouts:
         return []
@@ -43,19 +45,15 @@ def compute_best_office_hours(student_blockouts, professor_blocked_times=None, o
             key = (blockout['participant_name'], blockout['participant_email'])
             student_availability[key].append({
                 'day': blockout['day'],
-                'start': datetime.strptime(blockout['start_time'], '%I:%M %p').time(),
-                'end': datetime.strptime(blockout['end_time'], '%I:%M %p').time()
+                'start': parse_time(blockout['start_time']),
+                'end': parse_time(blockout['end_time'])
             })
     
-    # Define the time range to search (e.g., 8 AM to 8 PM in 30-min slots)
     start_of_day = datetime.strptime('08:00', '%H:%M').time()
     end_of_day = datetime.strptime('20:00', '%H:%M').time()
     slot_duration = 30  # minutes
-    
-    # Days to consider
     days = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday']
     
-    # Build set of professor blocked slots for quick lookup
     blocked_slots = set()
     for blocked in professor_blocked_times:
         if isinstance(blocked, dict):
@@ -70,20 +68,15 @@ def compute_best_office_hours(student_blockouts, professor_blocked_times=None, o
                     blocked_slots.add((b_day, current))
                     current = (datetime.combine(datetime.min, current) + timedelta(minutes=30)).time()
     
-    # Find all valid candidate slots (minimum 1 hour, 50%+ attendance)
     candidates = []
-    
     for day in days:
         current = start_of_day
         while current < end_of_day:
-            # Try block durations: 1hr, 1.5hr, 2hr (minimum 1 hour)
             for duration_min in [60, 90, 120]:
                 block_end = (datetime.combine(datetime.min, current) + timedelta(minutes=duration_min)).time()
-                
                 if block_end > end_of_day:
                     continue
                 
-                # Check if this slot is blocked by professor
                 is_blocked = False
                 check_time = current
                 while check_time < block_end:
@@ -95,20 +88,26 @@ def compute_best_office_hours(student_blockouts, professor_blocked_times=None, o
                 if is_blocked:
                     continue
                 
-                # Find which students can attend this entire block
                 attending_students = []
+                total_overlap_minutes = 0
+                min_overlap_minutes = 30
+
                 for student_key, avail_slots in student_availability.items():
                     for avail in avail_slots:
-                        if avail['day'] == day and avail['start'] <= current and avail['end'] >= block_end:
-                            attending_students.append(student_key)
-                            break
+                        if avail['day'] == day:
+                            overlap_start = max(current, avail['start'])
+                            overlap_end = min(block_end, avail['end'])
+                            if overlap_start < overlap_end:
+                                overlap_delta = datetime.combine(datetime.min, overlap_end) - datetime.combine(datetime.min, overlap_start)
+                                overlap_minutes = overlap_delta.total_seconds() / 60
+                                if overlap_minutes >= min_overlap_minutes:
+                                    attending_students.append(student_key)
+                                    total_overlap_minutes += overlap_minutes
+                                    break
                 
                 attending_count = len(attending_students)
                 if attending_count > 0:
                     score = attending_count / total_students
-                    
-                    # Include all candidates (even below 50%) to ensure coverage
-                    # But prioritize 50%+ in phase 2
                     candidates.append({
                         'day': day,
                         'start_time': current.strftime('%H:%M'),
@@ -116,40 +115,42 @@ def compute_best_office_hours(student_blockouts, professor_blocked_times=None, o
                         'score': score,
                         'students_available': attending_count,
                         'duration_minutes': duration_min,
-                        'attending_students': set(attending_students)
+                        'attending_students': set(attending_students),
+                        'total_overlap': total_overlap_minutes
                     })
-                
-                break  # Only use the longest duration that works for this start time
-            
-            # Move to next 30-min slot
+                            
             current = (datetime.combine(datetime.min, current) + timedelta(minutes=slot_duration)).time()
     
     if not candidates:
-        return []
+        return {"schedule": [], "total_students": total_students, "covered_students": 0, "uncovered_list": [], "coverage_percentage": 0}
     
-    # PHASE 1: Ensure each student is covered by at least one slot
+    # --- BUDGET MANAGEMENT ---
     recommendations = []
     covered_students = set()
     uncovered_students = set(students)
-    
-    # Track which days we've selected from
     selected_days = set()
     
-    # Keep selecting until all students are covered or we run out of slots
-    while uncovered_students and candidates and len(recommendations) < office_hours_needed:
+    total_minutes_scheduled = 0
+    max_minutes_allowed = office_hours_needed * 60
+    
+    # PHASE 1: Coverage focusing on the minute budget
+    while uncovered_students and candidates and total_minutes_scheduled < max_minutes_allowed:
         best_candidate = None
         best_cover_score = -1
         
         for candidate in candidates:
-            # How many uncovered students does this candidate cover?
+            # Check if this candidate would put us over budget
+            if total_minutes_scheduled + candidate['duration_minutes'] > max_minutes_allowed:
+                continue
+
             new_coverage = len(candidate['attending_students'] & uncovered_students)
-            
             if new_coverage == 0:
-                continue  # Skip candidates that don't cover any new students
+                continue 
             
-            # Prioritize: (1) most new students covered, (2) highest attendance score, (3) different day
-            day_bonus = 2.0 if candidate['day'] not in selected_days else 0
-            cover_score = (new_coverage * 10) + candidate['score'] + day_bonus
+            day_bonus = 30.0 if candidate['day'] not in selected_days else 0
+            raw_value = (new_coverage * 60) + candidate['total_overlap'] + day_bonus
+            duration_factor = (candidate['duration_minutes'] / 60.0) ** 0.5 
+            cover_score = raw_value / duration_factor
             
             if cover_score > best_cover_score:
                 best_cover_score = cover_score
@@ -162,40 +163,67 @@ def compute_best_office_hours(student_blockouts, professor_blocked_times=None, o
                 'end_time': best_candidate['end_time'],
                 'score': best_candidate['score'],
                 'students_available': best_candidate['students_available'],
-                'duration_minutes': best_candidate['duration_minutes']
+                'duration_minutes': best_candidate['duration_minutes'],
+                'attending_students': best_candidate['attending_students']
             })
+            total_minutes_scheduled += best_candidate['duration_minutes']
             covered_students.update(best_candidate['attending_students'])
             uncovered_students -= best_candidate['attending_students']
             selected_days.add(best_candidate['day'])
             
-            # Remove ALL candidates on the same day that don't add new coverage
             candidates = [c for c in candidates 
                           if c['day'] != best_candidate['day'] or 
                           len(c['attending_students'] & uncovered_students) > 0]
         else:
-            break  # No more candidates can cover remaining students (prefer 50%+)
-    while len(recommendations) < office_hours_needed and candidates:
-        # Sort remaining by score (50%+ first, then by score)
-        candidates.sort(key=lambda x: (-1 if x['score'] >= 0.5 else 0, -x['score']))
+            break 
+            
+    # PHASE 2: Filling the remainder of the budget
+    while total_minutes_scheduled < max_minutes_allowed and candidates:
+        candidates.sort(key=lambda x: (
+            -1 if x['score'] >= 0.5 else 0, 
+            -(x['total_overlap'] / ((x['duration_minutes'] / 60.0) ** 0.5))
+        ))
         
         best = candidates[0]
         
-        # Only add if it's 50%+ OR we have no better options
-        if best['score'] >= 0.5 or len([c for c in candidates if c['score'] >= 0.5]) == 0:
+        # Ensure adding this doesn't exceed total hours
+        if total_minutes_scheduled + best['duration_minutes'] <= max_minutes_allowed:
             recommendations.append({
                 'day': best['day'],
                 'start_time': best['start_time'],
                 'end_time': best['end_time'],
                 'score': best['score'],
                 'students_available': best['students_available'],
-                'duration_minutes': best['duration_minutes']
+                'duration_minutes': best['duration_minutes'],
+                'attending_students': best['attending_students']
             })
+            total_minutes_scheduled += best['duration_minutes']
             selected_days.add(best['day'])
         
-        candidates = candidates[1:]
+        # Remove conflicting slots
+        candidates = [c for c in candidates if c['day'] != best['day'] or 
+                      c['start_time'] >= best['end_time'] or 
+                      c['end_time'] <= best['start_time']]
     
-    # Sort final recommendations by day and time for readability
+    # Sorting and Metrics
     day_order = {d: i for i, d in enumerate(days)}
     recommendations.sort(key=lambda x: (day_order.get(x['day'], 0), x['start_time']))
     
-    return recommendations
+    final_covered_students_set = set()
+    for rec in recommendations:
+        final_covered_students_set.update(rec['attending_students'])
+        del rec['attending_students'] 
+
+    uncovered_student_details = [
+        {"name": name, "email": email} 
+        for name, email in students 
+        if (name, email) not in final_covered_students_set
+    ]
+
+    return {
+        "schedule": recommendations,
+        "total_students": total_students,
+        "covered_students": len(final_covered_students_set),
+        "uncovered_list": uncovered_student_details,
+        "coverage_percentage": round((len(final_covered_students_set) / total_students) * 100) if total_students > 0 else 0
+    }

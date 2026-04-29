@@ -92,6 +92,9 @@ def home():
 def admin():
     db = get_db()
 
+    from flask import current_app
+    print(f"FLASK IS LOOKING AT: {current_app.config['DATABASE']}")
+
     rows = db.execute(
         "SELECT id, participant_name, participant_email, day, start_time, end_time, block_type FROM student_blockouts ORDER BY created_at DESC"
     ).fetchall()
@@ -121,14 +124,30 @@ def admin():
     # Get professor settings
     settings = _get_professor_settings(db)
     
-    # Pass settings to algorithm
-    recommendations = compute_best_office_hours(
+    # Pass settings to algorithm, catching the new dictionary response
+    algorithm_results = compute_best_office_hours(
         student_blockouts, 
         professor_blocked_times=settings.get('professor_blocked_times', '[]'),
         office_hours_needed=settings.get('office_hours_per_week', 2)
     )
 
-    return render_template("admin.html", submissions=grouped_submissions, recommendations=recommendations, settings=settings)
+    # If the algorithm returns an empty list (no data), create a fallback dictionary
+    if not algorithm_results:
+        algorithm_results = {
+            "schedule": [], "total_students": 0, "covered_students": 0, 
+            "coverage_percentage": 0, "uncovered_list": []
+        }
+
+    return render_template(
+        "admin.html", 
+        submissions=grouped_submissions, 
+        recommendations=algorithm_results["schedule"],
+        settings=settings, 
+        total_students=algorithm_results["total_students"],
+        covered_students=algorithm_results["covered_students"],
+        coverage_percentage=algorithm_results["coverage_percentage"],
+        uncovered_list=algorithm_results["uncovered_list"] # NEW
+    )
 
 
 @main_bp.route("/admin/settings", methods=["GET", "POST"])
