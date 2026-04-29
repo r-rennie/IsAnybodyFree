@@ -6,6 +6,7 @@ def create_app():
     app = Flask(__name__, template_folder="templates", static_folder="static")
     app.config.from_mapping(
         DATABASE=os.path.join(app.instance_path, "app.sqlite"),
+        SECRET_KEY=os.environ.get("SECRET_KEY") or "dev-secret-key-change-in-production",
     )
 
     try:
