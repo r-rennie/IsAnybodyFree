@@ -67,10 +67,12 @@
   </head>
   <body>
     <div class="card">
-      <h1>Student Schedule Blockout</h1>
+      <h1>Submit Availability to {{ professor.name }}</h1>
       <p style="text-align: center; color: #333333;">Select your available time slots by clicking and dragging on the grid. Resubmitting with the same email overwrites previous data.</p>
 
-      <form method="post" id="availability-form">
+      <form method="post" id="availability-form" action="{{ url_for('main.student_form', slug=professor.slug)}}">
+        <input type="hidden" name="professor_id" value="{{ professor.id }}">
+
         <div class="horizontal-layout">
           <div class="form-panel">
             <div>
@@ -81,9 +83,12 @@
 
               <div class="field">
                 <label for="participant_email">Email</label>
-                <input id="participant_email" name="participant_email" type="email" placeholder="your_email@onu.edu" required>
+                <div style="display: flex; gap: 8px; width: 100%; max-width: 320px; margin: 0 auto;">
+                  <input id="participant_email" name="participant_email" type="email" placeholder="your_email@onu.edu" required style="margin: 0;">
+                  <button type="button" id="load-btn" onclick="loadMySchedule(event)" style="background: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; width: auto;">Load</button>                </div>
+                <small style="color: #666; text-align: center; display: block; margin-top: 4px;">Already submitted? Enter email and click Load.</small>
               </div>
-            </div>
+              </div>
 
             <button type="submit">Submit availability</button>
           </div>
@@ -188,6 +193,61 @@
             alert("Please select at least one available slot before submitting.");
           }
         });
+
+        // --- NEW: Bulletproof Load Existing Schedule Logic ---
+        async function loadMySchedule(event) {
+          // This line strictly forbids the browser from submitting the main form!
+          event.preventDefault(); 
+          
+          const email = document.getElementById("participant_email").value.trim();
+          const loadBtn = document.getElementById("load-btn");
+          
+          if (!email) {
+            alert("Please type your email address first so we can find your schedule!");
+            return;
+          }
+          
+          loadBtn.textContent = "Loading...";
+          loadBtn.disabled = true;
+          
+          try {
+            // Safely package the email address to send to the server
+            const url = `/api/student/load?slug={{ professor.slug }}&email=${encodeURIComponent(email)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.slots && data.slots.length > 0) {
+              // Auto-fill the name
+              if (data.name) {
+                document.getElementById("participant_name").value = data.name;
+              }
+              
+              // Erase current grid selections
+              document.querySelectorAll('.grid-cell.selected').forEach(cell => {
+                cell.classList.remove('selected');
+              });
+              
+              // Paint the saved slots back onto the grid
+              data.slots.forEach(slotStr => {
+                const [day, time] = slotStr.split('|');
+                const cell = document.querySelector(`.grid-cell[data-day="${day}"][data-time="${time}"]`);
+                if (cell) {
+                  cell.classList.add('selected');
+                }
+              });
+              
+              alert("Schedule loaded! You can now edit your grid and click Submit.");
+            } else {
+              alert("We couldn't find an existing schedule for that email.");
+            }
+          } catch (error) {
+            console.error("Load Error:", error);
+            alert("Oops, something went wrong talking to the server.");
+          } finally {
+            loadBtn.textContent = "Load";
+            loadBtn.disabled = false;
+          }
+        }
 
         buildGrid();
       </script>

@@ -37,18 +37,20 @@
         {% endif %}
       {% endwith %}
 
-      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-        
-        <div>
-          <a href="{{ url_for('main.home') }}" style="color: #2563eb; text-decoration: none;">← Back to Student Form</a>
-          <span style="color: #d1d5db; margin: 0 10px;"> | </span>
-          <a href="{{ url_for('main.admin_settings') }}" style="color: #2563eb; text-decoration: none;">⚙️ Settings</a>
-        </div>
+      <div style="position: relative; text-align: center; margin-bottom: 20px; margin-top: 10px;">
+        <h1 style="margin: 0;">Admin Dashboard</h1>
+        <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger btn-sm" style="position: absolute; right: 0; top: 5px;">
+          Log Out
+        </a>
+      </div>
 
-        <div>
-          <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger btn-sm">🚪 Log Out</a>
+      <div class="alert alert-primary text-center mb-4 shadow-sm">
+        <h6 class="alert-heading fw-bold mb-2">Your Shareable Student Link</h6>
+        <div class="input-group justify-content-center">
+            <input type="text" class="form-control text-center bg-white" style="max-width: 400px;" 
+                   value="{{ request.url_root }}p/{{ session.get('slug', 'your-slug') }}" readonly>
         </div>
-
+        <small class="text-muted mt-2 d-block">Send this exact link to your students to collect their availability.</small>
       </div>
       
       <div class="section">
@@ -113,10 +115,15 @@
         {% endif %}
       </div>
       
-      <div style="text-align: center; margin-top: 20px;">
-        <a href="{{ url_for('main.home') }}" style="color: #2563eb; text-decoration: none;">← Back to Student Form</a>
-        <span style="color: #d1d5db;"> | </span>
-        <a href="{{ url_for('main.admin_settings') }}" style="color: #2563eb; text-decoration: none;">⚙️ Settings</a>
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
+        <div>
+          <a href="{{ url_for('main.home') }}" style="color: #2563eb; text-decoration: none;">← Back to Student Form</a>
+          <span style="color: #d1d5db; margin: 0 10px;"> | </span>
+          <a href="{{ url_for('main.admin_settings') }}" style="color: #2563eb; text-decoration: none;">⚙️ Settings</a>
+        </div>
+        <div>
+          <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger btn-sm">🚪 Log Out</a>
+        </div>
       </div>
       
     </div>

@@ -1,13 +1,14 @@
 from datetime import datetime, timedelta
 import json
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask import Blueprint, jsonify, render_template, request, redirect, url_for, flash, session, current_app
 
 from .db import get_db
 from .services import compute_best_office_hours
 
-from flask import Blueprint, render_template, request, redirect, url_for, flash, session
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
+from sqlite3 import IntegrityError
+import re
 
 main_bp = Blueprint("main", __name__)
 
@@ -59,36 +60,69 @@ def _group_slots_by_day(slots):
     return blocks
 
 
-@main_bp.route("/", methods=["GET", "POST"])
+# ---------------------------------------------------------
+# NEW STUDENT ROUTES
+# ---------------------------------------------------------
+
+@main_bp.route("/")
 def home():
+    # If someone goes to the raw website without a link, show them this:
+    return "<h1>Welcome to IsAnybodyFree</h1><p>Please use the specific link provided by your professor to submit your hours.</p>"
+
+@main_bp.route("/p/<slug>", methods=["GET", "POST"])
+def student_form(slug):
     db = get_db()
-
-    if request.method == "POST":
-        participant_name = request.form.get("participant_name")
-        participant_email = request.form.get("participant_email")
-        selected_slots = request.form.get("selected_slots", "")
-
-        if participant_name and participant_email:
-            # Delete existing entries for this email
-            db.execute("DELETE FROM student_blockouts WHERE participant_email = ?", (participant_email,))
-            
-            if selected_slots:
-                slots = [s for s in selected_slots.split(",") if s]
-                for day, start_time, end_time in _group_slots_by_day(slots):
-                    db.execute(
-                        "INSERT INTO student_blockouts (participant_name, participant_email, day, start_time, end_time, block_type) VALUES (?, ?, ?, ?, ?, ?)",
-                        (participant_name, participant_email, day, start_time, end_time, "Available"),
-                    )
-            db.commit()
-
+    
+    # 1. Look up the specific professor's mailbox
+    prof = db.execute("SELECT * FROM professors WHERE slug = ?", (slug,)).fetchone()
+    
+    if not prof:
+        flash("Professor not found. Please double-check the link you were given.", "danger")
         return redirect(url_for("main.home"))
+        
+    if request.method == "POST":
+        # Grab the student's text data
+        name = request.form.get("participant_name")
+        email = request.form.get("participant_email")
+        
+        # Grab the massive string of grid slots!
+        selected_slots = request.form.get("selected_slots")
+        
+        if not selected_slots:
+            flash("Please select at least one available time slot.", "warning")
+            return redirect(url_for("main.student_form", slug=slug))
 
-    rows = db.execute(
-        "SELECT id, participant_name, participant_email, day, start_time, end_time, block_type FROM student_blockouts ORDER BY created_at DESC"
-    ).fetchall()
+        # FEATURE: Delete any previous submissions by this student so they can safely update their hours
+        db.execute("DELETE FROM student_blockouts WHERE professor_id = ? AND participant_email = ?", (prof['id'], email))
+        
+        # 2. Unpack the grid data (e.g., "Monday|8:00 AM,Tuesday|9:30 AM")
+        from datetime import datetime, timedelta
+        
+        slots = selected_slots.split(',')
+        for slot in slots:
+            if '|' in slot:
+                day, start_time = slot.split('|')
+                
+                # Math trick: Calculate the end time by adding 30 minutes to the start time
+                start_dt = datetime.strptime(start_time, "%I:%M %p")
+                end_dt = start_dt + timedelta(minutes=30)
+                end_time = end_dt.strftime("%I:%M %p")
+                
+                # Save this specific 30-minute block to the database
+                db.execute(
+                    """INSERT INTO student_blockouts 
+                       (professor_id, participant_name, participant_email, day, start_time, end_time, block_type) 
+                       VALUES (?, ?, ?, ?, ?, ?, ?)""",
+                    (prof['id'], name, email, day, start_time, end_time, "Available")
+                )
+                
+        db.commit()
+        
+        flash("Availability successfully submitted!", "success")
+        return redirect(url_for("main.student_form", slug=slug))
 
-    student_blockouts = [dict(row) for row in rows]
-    return render_template("index.html", student_blockouts=student_blockouts)
+    # Pass the professor's info to the HTML so we can personalize the page
+    return render_template("index.html", professor=prof)
 
 
 @main_bp.route("/admin")
@@ -99,15 +133,16 @@ def admin():
         flash("Please log in to view this page.", "warning")
         return redirect(url_for("main.login"))
         
-    # Later, when you query the database, you filter by their ID!
-    # Example update to your query:
-    # rows = db.execute("SELECT * FROM student_blockouts WHERE professor_id = ? ORDER BY created_at DESC", (session['professor_id'],)).fetchall()
+    # Grab the logged-in professor's ID
+    prof_id = session['professor_id']
 
     from flask import current_app
     print(f"FLASK IS LOOKING AT: {current_app.config['DATABASE']}")
 
+    # THE FIX: We added 'WHERE professor_id = ?' to strictly filter the mailboxes
     rows = db.execute(
-        "SELECT id, participant_name, participant_email, day, start_time, end_time, block_type FROM student_blockouts ORDER BY created_at DESC"
+        "SELECT id, participant_name, participant_email, day, start_time, end_time, block_type FROM student_blockouts WHERE professor_id = ? ORDER BY created_at DESC",
+        (prof_id,)
     ).fetchall()
 
     student_blockouts = [dict(row) for row in rows]
@@ -136,6 +171,7 @@ def admin():
     settings = _get_professor_settings(db)
     
     # Pass settings to algorithm, catching the new dictionary response
+    # Because we filtered student_blockouts above, this algorithm now ONLY runs on this specific professor's students!
     algorithm_results = compute_best_office_hours(
         student_blockouts, 
         professor_blocked_times=settings.get('professor_blocked_times', '[]'),
@@ -157,7 +193,7 @@ def admin():
         total_students=algorithm_results["total_students"],
         covered_students=algorithm_results["covered_students"],
         coverage_percentage=algorithm_results["coverage_percentage"],
-        uncovered_list=algorithm_results["uncovered_list"] # NEW
+        uncovered_list=algorithm_results["uncovered_list"]
     )
 
 
@@ -212,24 +248,17 @@ def admin_settings():
         blocked_times = []
     
     return render_template("admin_settings.html", settings=settings, blocked_times=blocked_times)
-
 @main_bp.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        email = request.form.get("email")
+        email = request.form.get("email").strip().lower() # Good idea to keep this strip/lower!
         password = request.form.get("password")
         
-        from flask import current_app
-        print(f"FLASK IS LOOKING HERE: {current_app.config['DATABASE']}")
-        
-        db = get_db()
-        prof = db.execute("SELECT * FROM professors WHERE email = ?", (email,)).fetchone()
-
         db = get_db()
         # Find the professor by email
         prof = db.execute("SELECT * FROM professors WHERE email = ?", (email,)).fetchone()
         
-        print(f"DEBUG - Did it find Dr. Kropp? {prof is not None}")
+        print(f"DEBUG - Did it find Professor? {prof is not None}")
         if prof:
             print(f"DEBUG - Did the password match? {check_password_hash(prof['password_hash'], password)}")
 
@@ -237,6 +266,8 @@ def login():
         if prof and check_password_hash(prof['password_hash'], password):
             session.clear()
             session['professor_id'] = prof['id']  # Give them their session badge!
+            session['slug'] = prof['slug']        # <--- HERE IS THE NEW LINE!
+            
             flash("Successfully logged in.", "success")
             return redirect(url_for("main.admin"))
         else:
@@ -249,3 +280,91 @@ def logout():
     session.clear() # Rip up the session badge
     flash("You have been logged out.", "info")
     return redirect(url_for("main.login"))
+
+@main_bp.route("/register", methods=["GET", "POST"])
+def register():
+    if request.method == "POST":
+        name = request.form.get("name").strip()
+        email = request.form.get("email").strip().lower()
+        password = request.form.get("password")
+
+        # 1. Generate a URL-friendly slug (e.g., "Dr. Kropp" -> "dr-kropp")
+        base_slug = re.sub(r'[^a-z0-9]+', '-', name.lower()).strip('-')
+        slug = base_slug
+
+        db = get_db()
+
+        # 2. Ensure the slug is completely unique (In case of two Dr. Smiths!)
+        counter = 1
+        while db.execute("SELECT id FROM professors WHERE slug = ?", (slug,)).fetchone():
+            slug = f"{base_slug}-{counter}"
+            counter += 1
+
+        # 3. Secure the password
+        hashed_pw = generate_password_hash(password)
+
+        try:
+            # 4. Create the Professor account
+            cursor = db.execute(
+                "INSERT INTO professors (name, email, slug, password_hash) VALUES (?, ?, ?, ?)",
+                (name, email, slug, hashed_pw)
+            )
+            prof_id = cursor.lastrowid
+
+            # 5. Give them their default settings folder immediately
+            db.execute(
+                "INSERT INTO professor_settings (professor_id, office_hours_per_week) VALUES (?, ?)",
+                (prof_id, 2) # Defaulting to 2 hours a week
+            )
+            db.commit()
+
+            # 6. Auto-login the new user so they don't have to type it again
+            session.clear()
+            session['professor_id'] = prof_id
+            flash(f"Welcome, {name}! Your account and unique link have been created.", "success")
+            return redirect(url_for("main.admin"))
+
+        except IntegrityError:
+            # This triggers if the email UNIQUE constraint fails
+            flash("An account with that email address already exists. Please log in.", "danger")
+            return redirect(url_for("main.register"))
+
+    return render_template("register.html")
+
+# ---------------------------------------------------------
+# API: LOAD STUDENT SCHEDULE
+# ---------------------------------------------------------
+@main_bp.route("/api/student/load")
+def load_student_schedule():
+    # Grabbing data safely via URL parameters instead of the URL path
+    email = request.args.get('email')
+    slug = request.args.get('slug')
+    
+    if not email or not slug:
+        return jsonify({"error": "Missing data"}), 400
+        
+    db = get_db()
+    
+    # 1. Find the professor
+    prof = db.execute("SELECT id FROM professors WHERE slug = ?", (slug,)).fetchone()
+    if not prof:
+        return jsonify({"error": "Professor not found"}), 404
+
+    # 2. Find the student's existing blockouts
+    rows = db.execute(
+        "SELECT day, start_time FROM student_blockouts WHERE professor_id = ? AND lower(participant_email) = lower(?)",
+        (prof['id'], email.strip())
+    ).fetchall()
+
+    # 3. Format the data for the JavaScript grid
+    slots = [f"{row['day']}|{row['start_time']}" for row in rows]
+    
+    # 4. Grab their name
+    name_row = db.execute(
+        "SELECT participant_name FROM student_blockouts WHERE professor_id = ? AND lower(participant_email) = lower(?) LIMIT 1", 
+        (prof['id'], email.strip())
+    ).fetchone()
+    
+    name = name_row['participant_name'] if name_row else ""
+
+    return jsonify({"name": name, "slots": slots})
