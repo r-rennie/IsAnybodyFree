@@ -11,9 +11,25 @@
     <!-- Adding CSS styles-->
     <style>
       * { box-sizing: border-box; }
-      html, body { height: 100%; }
-      body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; margin: 0; padding: 12px; background: #f2f5f9; }
-      .card { background: white; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); padding: 20px; width: min(100%, 1200px); max-height: calc(100vh - 24px); overflow: auto; }
+      html, body { min-height: 100%; }
+      body { 
+        font-family: Arial, sans-serif; 
+        display: flex; 
+        align-items: flex-start; 
+        justify-content: center; 
+        min-height: 100vh; 
+        margin: 0; 
+        padding: 12px; 
+        background: #f2f5f9; 
+      }
+      .card { 
+        background: white; 
+        border-radius: 18px; 
+        box-shadow: 0 20px 60px rgba(0,0,0,0.08); 
+        padding: 20px; 
+        width: min(100%, 1200px); 
+        margin-bottom: 20px; 
+      }
       h1 { margin-top: 0; text-align: center; }
       .section { margin-bottom: 40px; }
       .section h2 { border-bottom: 2px solid #e5e7eb; padding-bottom: 8px; }
@@ -40,9 +56,9 @@
       {% endwith %}
 
       <!-- Dashboard header-->
-      <div style="position: relative; text-align: center; margin-bottom: 20px; margin-top: 10px;">
-        <h1 style="margin: 0;">Admin Dashboard</h1>
-        <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger btn-sm" style="position: absolute; right: 0; top: 5px;">
+      <div class="d-flex justify-content-between align-items-center flex-wrap mb-4 mt-2 gap-2">
+        <h1 style="margin: 0; flex-grow: 1; text-align: center;">Admin Dashboard</h1>
+        <a href="{{ url_for('main.logout') }}" class="btn btn-outline-danger btn-sm">
           Log Out
         </a>
       </div>
