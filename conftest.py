@@ -1,15 +1,27 @@
 def pytest_itemcollected(item):
-    """Forces Pytest to use your custom docstrings in the terminal."""
+    """
+    Pytest Hook: Overrides the default test execution terminal output.
     
-    # Check if the test has a """triple quote""" docstring
+    Instead of printing the standard file path and function name (e.g., test_app.py::test_login), 
+    this hook intercepts the test collection phase and replaces the internal identifier 
+    with the test function's human-readable docstring.
+    """
+    
+    # Verify the test function has an associated docstring before attempting an override.
+    # The item.obj represents the actual Python test function/method object.
     if item.obj.__doc__:
-        # Clean up the text
+        
+        # Strip leading/trailing whitespace to ensure clean, aligned console formatting.
         doc = item.obj.__doc__.strip()
         
-        # Check if it's a parameterized test (like your Edge Cases)
+        # Determine if the test is dynamically generated via @pytest.mark.parametrize.
+        # Parameterized tests have a 'callspec' attribute containing their specific inputs.
         if hasattr(item, 'callspec'):
-            # Combine the docstring with your custom 'ids' label
+            
+            # Append the specific parameterization ID (the specific scenario/edge case) 
+            # to the base docstring so individual test variations remain distinguishable in the terminal.
             item._nodeid = f"{doc} [{item.callspec.id}]"
         else:
-            # For standard tests, just use the docstring
+            # For standard, non-parameterized tests, simply replace the system node ID 
+            # with the human-readable docstring.
             item._nodeid = doc

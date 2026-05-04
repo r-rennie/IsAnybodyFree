@@ -4,10 +4,25 @@ from flask import current_app, g
 
 
 def get_db():
+    """
+    Retrieves or establishes a database connection for the current Flask request context.
+    
+    This uses the Application Context 'g' object as a request-local singleton. 
+    By storing the connection in 'g', we ensure that multiple internal database 
+    calls during a single HTTP request reuse the same connection rather than 
+    opening and closing multiple threads, which improves performance and prevents locks.
+    """
+
     if "db" not in g:
         db_path = Path(current_app.config["DATABASE"])
+
+        # Ensure the directory structure exists before attempting connection
         db_path.parent.mkdir(parents=True, exist_ok=True)
         g.db = sqlite3.connect(str(db_path), detect_types=sqlite3.PARSE_DECLTYPES)
+
+        # Override the default tuple factory with sqlite3.Row.
+        # This allows dictionary-like access by column name (e.g., row['start_time']),
+        # making it much cleaner to parse data structures into your scheduling algorithm.
         g.db.row_factory = sqlite3.Row
     return g.db
 

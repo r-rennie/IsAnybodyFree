@@ -1,3 +1,4 @@
+<!-- The form for students to fill out -->
 <!doctype html>
 <html lang="en">
   <head>
@@ -66,13 +67,16 @@
     </style>
   </head>
   <body>
+    <!-- Tells students what professor they're submitting time for -->
     <div class="card">
       <h1>Submit Availability to {{ professor.name }}</h1>
+      <!-- Instructions -->
       <p style="text-align: center; color: #333333;">Select your available time slots by clicking and dragging on the grid. Resubmitting with the same email overwrites previous data.</p>
 
       <form method="post" id="availability-form" action="{{ url_for('main.student_form', slug=professor.slug)}}">
         <input type="hidden" name="professor_id" value="{{ professor.id }}">
 
+        <!-- Setting up the panel layout -->
         <div class="horizontal-layout">
           <div class="form-panel">
             <div>
@@ -81,6 +85,7 @@
                 <input id="participant_name" name="participant_name" type="text" placeholder="Your name" required>
               </div>
 
+              <!-- Student email entry -->
               <div class="field">
                 <label for="participant_email">Email</label>
                 <div style="display: flex; gap: 8px; width: 100%; max-width: 320px; margin: 0 auto;">
@@ -90,9 +95,11 @@
               </div>
               </div>
 
+              <!-- Submit button -->
             <button type="submit">Submit availability</button>
           </div>
 
+          <!-- Creating the actual availability grid with instructions -->
           <div class="grid-container">
             <div class="grid-title">Availability grid</div>
             <div class="grid-legend">Click and drag to select available slots.</div>
@@ -103,6 +110,7 @@
         <input type="hidden" name="selected_slots" id="selected_slots">
       </form>
 
+      <!-- JS Functionality -->
       <script>
         const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
         const startHour = 8;
@@ -139,6 +147,7 @@
           return cell;
         }
 
+        // Toggling cells
         function toggleCell(cell, state) {
           cell.classList.toggle("selected", state);
         }
@@ -186,6 +195,7 @@
           isMouseDown = false;
         });
 
+        // Submitting entries; if there are no slots selected, it prompts the student to enter at least one available time
         document.getElementById("availability-form").addEventListener("submit", (event) => {
           collectSlots();
           if (!selectedSlotsInput.value) {
@@ -194,7 +204,6 @@
           }
         });
 
-        // --- NEW: Bulletproof Load Existing Schedule Logic ---
         async function loadMySchedule(event) {
           // This line strictly forbids the browser from submitting the main form!
           event.preventDefault(); 

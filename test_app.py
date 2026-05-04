@@ -2,99 +2,129 @@ import os
 import tempfile
 import pytest
 from app import create_app
-from app.db import get_db  # Change this if your get_db is in a different file!
+from app.db import get_db
 
 # ---------------------------------------------------------
-# THE FIXTURE (Setting up the Ghost Database)
+# TEST ENVIRONMENT FIXTURE
 # ---------------------------------------------------------
 @pytest.fixture
 def client():
-    # 1. Create a temporary, secure file path for our ghost database
+    """
+    Test Client Initialization Context.
+    
+    Instead of running tests on your real development database (which would ruin 
+    your actual saved data), this fixture creates a temporary, blank-slate database 
+    file just for this test run—like a digital sandbox.
+    """
+    # 1. Ask the operating system for a safe, temporary file location
     db_fd, db_path = tempfile.mkstemp()
 
-    # 2. Spin up the app and point it exclusively to the ghost database
+    # 2. Boot up a special instance of the Flask application and point its 
+    # internal compass exclusively to our temporary file.
     app = create_app()
     app.config.update({
         'TESTING': True,
         'DATABASE': db_path
     })
 
-    # 3. Build the blank tables using your schema.sql blueprint
+    # 3. Build the required tables inside our temporary database using the schema file.
     with app.app_context():
         db = get_db()
-        # Find your schema file (make sure 'schema.sql' matches your exact file name/path)
         with open('app/schema.sql', 'r') as f:
             db.executescript(f.read())
         db.commit()
 
-    # 4. Hand the fake browser to the tests
+    # 4. Yield control to the test function, providing it with a simulated web browser (client) 
+    # to navigate the app.
     with app.test_client() as client:
         yield client
 
-    # 5. TEARDOWN: The second the tests finish, nuke the ghost database from orbit!
+    # 5. Teardown: The moment the test completes, close the connection and physically 
+    # delete the temporary file from the hard drive, leaving no trace behind.
     os.close(db_fd)
     os.unlink(db_path)
 
+
 # ---------------------------------------------------------
-# THE TESTS
+# APPLICATION ROUTING & SECURITY TESTS
 # ---------------------------------------------------------
 
 def test_home_fallback_page(client):
-    """Test the Chaos Path: What happens if someone visits the raw URL?"""
+    """
+    Verifies the root directory fallback mechanism.
+    If a student guesses the base URL instead of using their professor's specific link, 
+    the system should safely land them on a generalized instruction page rather than crashing.
+    """
     response = client.get("/")
     
-    # Did the page load successfully? (200 OK)
     assert response.status_code == 200
-    # Did it show our custom fallback message?
-    assert b"Welcome to IsAnybodyFree" in response.data
-    assert b"specific link provided by your professor" in response.data
+    assert b"<h1>IsAnybodyFree?</h1>" in response.data
+    assert b"specific, direct link provided by your professor" in response.data
+
 
 def test_login_page_loads(client):
-    """Test the Happy Path: Can a professor access the login page?"""
+    """
+    Standard HTTP GET validation.
+    Ensures the login template renders correctly without internal server errors.
+    """
     response = client.get("/login")
     
     assert response.status_code == 200
-    # Checking for the specific text on your login page
     assert b"Create Account" in response.data or b"Sign Up" in response.data or b"Log In" in response.data
 
+
 def test_api_missing_data(client):
-    """Test the Chaos Path: Does the API catch bad requests?"""
-    # Hitting the load route WITHOUT providing an email or slug
+    """
+    API Input Validation Test.
+    Simulates a scenario where a browser drops network packets or a malicious user 
+    tries to ping the API directly without attaching the required identification parameters.
+    """
     response = client.get("/api/student/load")
     
-    # It should reject us with a 400 Bad Request error
+    # The server should reject the request outright (HTTP 400 Bad Request)
     assert response.status_code == 400
-    # It should return our custom JSON error message
     assert b"Missing data" in response.data
 
+
 def test_admin_dashboard_security(client):
-    """Test The Walls: Can a random person view the dashboard without logging in?"""
-    # Try to go directly to the admin page
+    """
+    Session Authorization Test.
+    Acts like a digital bouncer. If someone tries to navigate directly to the protected 
+    dashboard URL without an active login session, the server should intercept the request.
+    """
     response = client.get("/admin")
     
-    # 302 means "Redirect". It should catch us and redirect us away!
+    # HTTP 302 signifies a forced redirect.
     assert response.status_code == 302
-    # Ensure it is redirecting us specifically to the login page
+    
+    # Confirm the system specifically kicked them back to the login screen.
     assert "/login" in response.headers["Location"]
 
+
 def test_login_failure_action(client):
-    """Test POST: What happens when a professor typos their password?"""
-    
-    # We simulate filling out the HTML form and clicking 'Submit'
-    # follow_redirects=True tells the test browser to automatically follow the routing
+    """
+    Authentication Rejection Test.
+    Simulates a user typing the wrong credentials into the login form and clicking submit.
+    """
+    # The dictionary passed to 'data' mimics the exact payload a web browser sends.
     response = client.post("/login", data={
         "email": "wrong_email@onu.edu",
         "password": "totallywrongpassword"
     }, follow_redirects=True)
     
     assert response.status_code == 200
-    # The error flash message should appear on the screen!
+    # Ensure the UI provides practical feedback to the user about why the login failed.
     assert b"Invalid email or password" in response.data
+
+
+# ---------------------------------------------------------
+# EDGE CASE & INTEGRATION TESTS
+# ---------------------------------------------------------
 
 @pytest.mark.parametrize("weird_email", [
     "no_at_symbol.com",
     "spaces in@email.com",
-    "DROP TABLE students;",  # Sneaky SQL Injection attempt
+    "DROP TABLE students;",  
     "CAPITAL@onu.edu",
     "!@#$%^&*()_+",
     "very.common@example.com"
@@ -107,22 +137,27 @@ def test_login_failure_action(client):
     "Processes standard valid emails safely"
 ])
 def test_api_resilience(client, weird_email):
-    """Test Edge Cases: Throwing bizarre data at your API to ensure it doesn't crash."""
-    
-    # We use a fake slug because we just want to ensure the email string doesn't break the routing
+    """
+    Parameterized Input Sanitization Test.
+    Instead of writing six different tests, this function runs multiple times, throwing 
+    various formats of junk data at the API. If the system is secure, it will handle 
+    the bad data gracefully rather than throwing an internal 500 server crash.
+    """
     url = f"/api/student/load?slug=dr-fake&email={weird_email}"
     response = client.get(url)
     
-    # 404 means "Professor not found", which is the correct, safe response! 
-    # If the server crashed because of the weird characters, this would return a 500 error.
+    # HTTP 404 is the expected, safe response because 'dr-fake' does not exist.
     assert response.status_code == 404
     assert b"Professor not found" in response.data
 
+
 def test_full_student_submission(client):
-    """Test POST: Can a student successfully submit their availability grid?"""
-    from app.db import get_db
-    
-    # 1. Open the app context so we can talk to the ghost database
+    """
+    End-to-End Integration Test.
+    Proves the entire chain works from the front to the back: setting up a database record, 
+    processing an HTTP form submission, and verifying the new data was physically written to the disk.
+    """
+    # 1. Background Setup: Inject a fake professor into the sandbox database so the form has a valid target.
     with client.application.app_context():
         db = get_db()
         db.execute(
@@ -131,21 +166,21 @@ def test_full_student_submission(client):
         )
         db.commit()
 
-    # 2. Submit the student schedule
+    # 2. Simulate the HTTP POST request triggered when a student clicks 'Submit' on their availability grid.
     response = client.post("/p/test-prof", data={
         "participant_name": "Test Student",
         "participant_email": "student@test.com",
         "selected_slots": "Monday|8:00 AM,Monday|8:30 AM"
     }, follow_redirects=True)
     
-    # 3. Check the backend result FIRST (This is the ultimate proof!)
+    # 3. Database Verification: Bypass the web interface and look directly at the hard drive 
+    # to guarantee the data was actually saved in the correct format.
     with client.application.app_context():
         db = get_db()
         saved_blocks = db.execute("SELECT * FROM student_blockouts WHERE participant_name = 'Test Student'").fetchall()
         
-        # Did it actually save our 2 slots to the database?
+        # We submitted 2 slots in the comma-separated string, so we expect exactly 2 distinct rows in the database.
         assert len(saved_blocks) == 2  
         
-    # 4. Check the frontend result
-    # We just ensure the page loaded successfully without crashing (200 OK)
+    # 4. View Verification: Ensure the server rendered the final "Success" page without crashing.
     assert response.status_code == 200

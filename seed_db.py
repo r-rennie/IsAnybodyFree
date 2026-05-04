@@ -1,25 +1,34 @@
+"""
+Database Seeding Utility
+
+Automates the teardown and reconstruction of the local SQLite database.
+Injects a baseline professor account and a diverse set of synthetic student 
+availability profiles to test the scheduling algorithm's edge cases.
+"""
+
 import sqlite3
 import os
 from werkzeug.security import generate_password_hash
 
 def seed_database():
     try:
-        # Force it to use the exact path Flask is monitoring
+        # Establish absolute paths to ensure the script targets the correct instance 
+        # directory, regardless of the terminal's current working directory.
         base_dir = os.path.abspath(os.path.dirname(__file__))
         db_path = os.path.join(base_dir, 'instance', 'app.sqlite')
         
-        print(f"SEED SCRIPT IS SAVING HERE: {db_path}") # Make sure this print is here!
-        
+        print(f"SEED SCRIPT IS SAVING HERE: {db_path}") 
         print(f"Connecting to: {db_path}")
+        
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
 
-        # 1. WIPE AND REBUILD TABLES USING SCHEMA.SQL
+        # --- PHASE 1: Schema Initialization ---
         print("Locating schema.sql...")
-        
         base_dir = os.path.abspath(os.path.dirname(__file__))
         
-        # The script will guess both possible locations
+        # Directory resolution fallback: supports execution from both the 
+        # project root and the inner application folder.
         path_if_root = os.path.join(base_dir, 'app', 'schema.sql')
         path_if_app = os.path.join(base_dir, 'schema.sql')
         
@@ -33,56 +42,60 @@ def seed_database():
             print(f"CRITICAL ERROR: Could not find schema.sql!")
             print(f"  Looked here: {path_if_root}")
             print(f"  Looked here: {path_if_app}")
-            return # Stop the script so it doesn't crash later
+            return # Abort execution to prevent cascading DB connection errors
             
-        # Open and run the schema
+        # Execute the Data Definition Language (DDL) to rebuild tables
         with open(schema_path, 'r') as f:
             cursor.executescript(f.read())
 
-        # 2. CREATE A TEST PROFESSOR
+        # --- PHASE 2: Tenant Provisioning ---
         print("Creating Dr. Kropp account...")
-        # We hash the password 'password123' so it's secure
+        
+        # Cryptographically hash the test password to simulate production-grade authentication
         hashed_pw = generate_password_hash("password123")
         cursor.execute(
             "INSERT INTO professors (name, email, slug, password_hash) VALUES (?, ?, ?, ?)",
             ("Dr. Kropp", "kropp@onu.edu", "dr-kropp", hashed_pw)
         )
         
-        # Grab the ID of the professor we just created (should be 1)
+        # Retrieve the auto-incremented primary key for foreign-key mapping
         prof_id = cursor.lastrowid
 
-        # 3. GIVE DR. KROPP DEFAULT SETTINGS
+        # Initialize algorithm parameters (e.g., target 5 hours of coverage)
         cursor.execute(
             "INSERT INTO professor_settings (professor_id, office_hours_per_week) VALUES (?, ?)",
             (prof_id, 5)
         )
 
-        # 4. INSERT THE CHAOTIC STUDENT DATA LINKED TO DR. KROPP
+        # --- PHASE 3: Synthetic Data Injection ---
+        # Injects varied availability patterns (from highly flexible to highly constrained)
+        # to properly stress-test the scheduling algorithm's coverage logic.
         print("Inserting student data...")
         test_entries = [
-            # 5 DAYS A WEEK
+            # High Flexibility (5 Days)
             {"name": "Alice A.", "email": "alice@onu.edu", "day": "Monday", "start": "09:00 AM", "end": "11:00 AM"},
             {"name": "Alice A.", "email": "alice@onu.edu", "day": "Tuesday", "start": "01:00 PM", "end": "03:00 PM"},
             {"name": "Alice A.", "email": "alice@onu.edu", "day": "Wednesday", "start": "10:00 AM", "end": "12:00 PM"},
             {"name": "Alice A.", "email": "alice@onu.edu", "day": "Thursday", "start": "02:00 PM", "end": "04:30 PM"},
             {"name": "Alice A.", "email": "alice@onu.edu", "day": "Friday", "start": "08:00 AM", "end": "10:30 AM"},
             
-            # 4 DAYS A WEEK
+            # Moderate Flexibility (4 Days)
             {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Monday", "start": "10:00 AM", "end": "12:00 PM"},
             {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Tuesday", "start": "02:00 PM", "end": "04:00 PM"},
             {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Wednesday", "start": "08:00 AM", "end": "09:30 AM"},
             {"name": "Fiona F.", "email": "fiona@onu.edu", "day": "Thursday", "start": "11:30 AM", "end": "01:30 PM"},
 
-            # 3 DAYS A WEEK 
+            # Average Flexibility (3 Days)
             {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Monday", "start": "11:00 AM", "end": "01:00 PM"},
             {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Wednesday", "start": "01:00 PM", "end": "03:00 PM"},
             {"name": "Hannah H.", "email": "hannah@onu.edu", "day": "Friday", "start": "09:30 AM", "end": "11:30 AM"},
 
-            # 2 DAYS A WEEK
+            # Low Flexibility (2 Days)
             {"name": "Ian I.", "email": "ian@onu.edu", "day": "Tuesday", "start": "09:00 AM", "end": "11:00 AM"},
             {"name": "Ian I.", "email": "ian@onu.edu", "day": "Thursday", "start": "02:00 PM", "end": "04:00 PM"},
 
-            # 1 DAY A WEEK (Hard Constraints)
+            # Hard Constraints (Single Time Window) - The algorithm must prioritize these 
+            # to achieve maximum unique student coverage.
             {"name": "Amy A.", "email": "amy@onu.edu", "day": "Tuesday", "start": "04:00 PM", "end": "05:00 PM"},
             {"name": "Bob B.", "email": "bob@onu.edu", "day": "Thursday", "start": "12:00 PM", "end": "02:00 PM"}
         ]
