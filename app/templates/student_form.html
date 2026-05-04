@@ -10,27 +10,60 @@
       html, body { height: 100%; }
       * { box-sizing: border-box; }
       html, body { min-height: 100%; }
-      body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; margin: 0; padding: 12px; background: #CCCCCC; }
+      body { 
+        font-family: Arial, sans-serif; 
+        display: flex; 
+        align-items: flex-start; 
+        justify-content: center; 
+        min-height: 100vh; 
+        margin: 0; 
+        padding: 12px; 
+        background: #CCCCCC; 
+      }
       .card { 
         background: #F5F5F5; 
         border-radius: 18px; 
-        box-shadow: 0 20px 60px rgba(0,0,0,0.08); 
         padding: 20px; 
-        width: min(100%, 1100px); 
-        margin-bottom: 40px; /* Space so the Submit button isn't at the very edge */
+        width: 100%; 
+        max-width: 1100px;
+        min-height: min-content; 
+        margin-bottom: 40px;
       }
-      h1 { margin-top: 0; text-align: center; color: #FF7F00; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+      h1 { margin-top: 10px; margin-bottom: 20px; font-size: clamp(1.5rem, 5vw, 2.5rem); text-align: center; color: #FF7F00; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
       .field { display: grid; gap: 4px; margin-bottom: 16px; text-align: left; color: #333333; }
       .field label { display: block; font-weight: 700; margin-bottom: 2px; width: 100%; max-width: 320px; margin-left: auto; margin-right: auto; }
       .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
       .field-row .field { margin-bottom: 16px; }
-      .horizontal-layout { display: grid; grid-template-columns: minmax(320px, 380px) minmax(0, 1fr); gap: 28px; align-items: stretch; }
+      .horizontal-layout { 
+        display: grid; 
+        gap: 20px; 
+      }
+
+      @media (min-width: 900px) {
+        .horizontal-layout { 
+          grid-template-columns: 350px 1fr; 
+        }
+      }
       .form-panel { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; height: 100%; }
       .grid-container { margin-top: 0; padding: 18px; border: 1.5px solid #D3D3D3; border-radius: 16px; background: rgba(255, 111, 0, 0.15); box-shadow: inset 0 0 0 1px rgba(211, 211, 211, 0.3); }
       .grid-title { margin-bottom: 8px; font-weight: 500; font-size: 1.2rem; text-align: center; color: #333333; }
       .grid-legend { margin-bottom: 12px; color: #666666; font-size: 0.9rem; text-align: center; }
-      .schedule-grid { display: grid; gap: 1px; border-radius: 12px; background: #D3D3D3; overflow: auto; max-height: 400px; touch-action: none; }
-      .grid-header-row, .grid-row { display: grid; grid-template-columns: 72px repeat(5, minmax(0, 1fr)); gap: 1px; }
+      .schedule-grid { 
+        display: grid; 
+        gap: 1px; 
+        border-radius: 12px; 
+        background: #D3D3D3; 
+        overflow-x: auto; 
+        max-height: 400px; 
+        touch-action: none;
+        width: 100%; 
+      }
+      .grid-header-row, .grid-row { 
+        display: grid; 
+        grid-template-columns: 80px repeat(5, 1fr); 
+        gap: 1px; 
+        width: 100%;
+      }
       .grid-header-row { position: static; top: 0; z-index: 1; min-height: 44px; border-bottom: 2px solid #D3D3D3; }
       .grid-header-row > div { display: flex; align-items: center; justify-content: center; min-height: 34px; background: #F5F5F5; }
       .grid-title { margin-bottom: 8px; font-weight: 700; font-size: 1.2rem; text-align: center; color: #333333; }
@@ -67,9 +100,26 @@
         .time-label { font-size: 0.8rem; padding: 5px 6px; }
         .grid-cell { min-height: 24px; }
         .grid-day-label { font-size: 0.8rem; padding: 5px 4px; }
-        .schedule-grid { max-height: 250px; }
+        .schedule-grid { max-height: 250px;  }
         .card { padding: 12px; }
         body { padding: 8px; }
+      }
+      @media (max-width: 500px) {
+        .grid-day-label { 
+          font-size: 0.65rem !important; 
+          padding: 2px !important;
+        }
+        .time-label {
+          font-size: 0.65rem !important;
+          padding: 4px 2px !important;
+          width: 55px; /* Narrower time column for mobile */
+        }
+        .card {
+          padding: 10px;
+        }
+        h1 {
+          font-size: 1.4rem;
+        }
       }
     </style>
   </head>
@@ -92,26 +142,26 @@
                 <input id="participant_name" name="participant_name" type="text" placeholder="Your name" required>
               </div>
 
-              <!-- Student email entry -->
               <div class="field">
                 <label for="participant_email">Email</label>
                 <div style="display: flex; flex-wrap: wrap; gap: 8px; width: 100%; max-width: 320px; margin: 0 auto;">
                   <input id="participant_email" name="participant_email" type="email" placeholder="your_email@onu.edu" required style="margin: 0;">
-                  <button type="button" id="load-btn" onclick="loadMySchedule(event)" style="background: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; width: auto;">Load</button>                </div>
+                  <button type="button" id="load-btn" onclick="loadMySchedule(event)" style="background: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; width: auto;">Load</button>
+                </div>
                 <small style="color: #666; text-align: center; display: block; margin-top: 4px;">Already submitted? Enter email and click Load.</small>
               </div>
-              </div>
-
-              <!-- Submit button -->
-            <button type="submit">Submit availability</button>
+            </div>
           </div>
 
-          <!-- Creating the actual availability grid with instructions -->
           <div class="grid-container">
             <div class="grid-title">Availability grid</div>
             <div class="grid-legend">Click and drag to select available slots.</div>
             <div class="schedule-grid" id="schedule-grid"></div>
           </div>
+        </div>
+
+        <div style="margin-top: 32px; padding-bottom: 20px;">
+          <button type="submit">Submit availability</button>
         </div>
 
         <input type="hidden" name="selected_slots" id="selected_slots">
