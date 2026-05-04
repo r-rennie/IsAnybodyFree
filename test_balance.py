@@ -17,5 +17,6 @@ print()
 
 results = compute_best_office_hours(test_data, office_hours_needed=3)
 print(f"Recommendations (trying to cover all students):")
-for r in results:
-    print(f"  {r['day']}: {r['start_time']}-{r['end_time']} | Score: {r['score']} | {r['students_available']} students | {r['duration_minutes']}min")
+
+for r in results['schedule']: 
+    print(f"  {r['day']}: {r['start_time']}-{r['end_time']}...")

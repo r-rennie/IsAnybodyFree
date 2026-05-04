@@ -66,8 +66,8 @@ def _group_slots_by_day(slots):
 
 @main_bp.route("/")
 def home():
-    # If someone goes to the raw website without a link, show them this:
-    return "<h1>Welcome to IsAnybodyFree</h1><p>Please use the specific link provided by your professor to submit your hours.</p>"
+    # Make sure this matches the name of the file you just updated!
+    return render_template("index.html")
 
 @main_bp.route("/p/<slug>", methods=["GET", "POST"])
 def student_form(slug):
@@ -122,7 +122,7 @@ def student_form(slug):
         return redirect(url_for("main.student_form", slug=slug))
 
     # Pass the professor's info to the HTML so we can personalize the page
-    return render_template("index.html", professor=prof)
+    return render_template("student_form.html", professor=prof)
 
 
 @main_bp.route("/admin")
@@ -135,6 +135,12 @@ def admin():
         
     # Grab the logged-in professor's ID
     prof_id = session['professor_id']
+
+    # --- NEW FIX 1: Fetch the full professor row from the database ---
+    professor = db.execute(
+        "SELECT * FROM professors WHERE id = ?", (prof_id,)
+    ).fetchone()
+    # -----------------------------------------------------------------
 
     from flask import current_app
     print(f"FLASK IS LOOKING AT: {current_app.config['DATABASE']}")
@@ -187,6 +193,7 @@ def admin():
 
     return render_template(
         "admin.html", 
+        professor=professor,  # <-- NEW FIX 2: Hand the professor data to the HTML!
         submissions=grouped_submissions, 
         recommendations=algorithm_results["schedule"],
         settings=settings, 

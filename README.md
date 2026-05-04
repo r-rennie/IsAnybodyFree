@@ -1,32 +1,60 @@
-# IsAnybodyFree
-A Python-powered web app for optimizing academic office hours. Features a custom availability-matching engine to solve scheduling conflicts between professors and students.
+# IsAnybodyFree?
+**The fast, automated way to find overlapping office hours.**
 
-## GitHub workflow
-To keep this project in sync with GitHub, use the following commands from the repository root.
+**Live Application:** [https://isanybodyfree1.pythonanywhere.com/](https://isanybodyfree1.pythonanywhere.com/)
 
-- Fetch the latest changes from the remote repository:
+## 📖 Project Overview
+IsAnybodyFree is a professional web application designed to solve the optimization task of scheduling faculty office hours. Instead of manual back-and-forth emails, professors share a unique link where students "drag and select" their availability. The app's core engine then calculates the optimal time slots that provide the highest student coverage.
 
-```bash
-git pull origin main
-```
+## 🛠 Features
+* **Professor Dashboard:** Manage settings and view recommended office hour windows.
+* **Dynamic Matching Engine:** Optimization algorithm that calculates student density per time slot.
+* **Unique Slugs:** Secure, shareable URLs for every faculty member (e.g., `/p/dr-fake`).
+* **Mobile-Friendly Grid:** Intuitive UI for students to block out class and work schedules.
 
-- Stage and commit your local changes:
+## 🤖 Agentic Engineering & AI Disclosure
+In accordance with the course AI Policy, this application was developed primarily using **Agentic Engineering**.
+* **Primary Agent:** Gemini 3 Flash.
+* **Tooling Evolution:** Development initially began using the embedded AI agent within VS Code. However, due to severe access and connectivity issues that hindered the workflow, the project was migrated to the Gemini 3 Flash web-based environment. This transition allowed for more stable long-context window management and consistent code generation.
+* **AI Citations:**
+    * **Architecture:** AI assisted in designing the Application Factory pattern and Flask Blueprint structure to ensure scalability.
+    * **Optimization Logic:** The `compute_best_office_hours` algorithm was co-authored with AI to ensure efficient set-coverage logic for student availability.
+    * **Refactoring:** AI agents were used to vet generated code for production reliability, identifying edge cases in database transactions.
+* **Human Audit:** Every line of AI-generated code was manually reviewed, tested, and modified by the development team to ensure fit-for-purpose reliability and production readiness.
 
-```bash
-git add .
-git commit -m "Describe your changes here"
-```
 
-- Push your new commits back to GitHub:
+## 🧪 Testing & Reliability
+This project features a **robust, comprehensive testing system** using `pytest`.
+To run the test suite locally:
+1. Ensure your virtual environment is active.
+2. Run the command:
+   ```bash
+   pytest -v
+   ```
+Tests cover database initialization, route integrity, and the office hour recommendation algorithm.
 
-```bash
-git push origin main
-```
+## 💻 Local Installation (For Humans)
+To run this application locally for development or review:
 
-If you want to see what has changed before committing, run:
+1. **Clone the Repo:**
+   ```bash
+   git clone https://github.com/r-rennie/IsAnybodyFree.git
+   cd IsAnybodyFree
+   ```
+2. **Setup Virtual Environment:**
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+   ```
+3. **Install Dependencies:**
+   ```bash
+   pip install -r requirements.txt
+   ```
+4. **Run the App:**
+   ```bash
+   flask run
+   ```
 
-```bash
-git status
-```
-
-Use `git pull` first when you start working so you have the latest updates, then `git push` after your commit to upload your changes.
+## 🤝 Version Control & QA
+* **GitHub Hosting:** This project is successfully hosted on GitHub to allow for transparent version control.
+* **QA Review:** Active progress was tracked through **Pull Request Days** starting on 4/20. Our group successfully paired with another team to conduct cross-team QA testing and provided constructive criticism on their implementation logic.

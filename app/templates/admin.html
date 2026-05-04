@@ -48,27 +48,45 @@
         <h6 class="alert-heading fw-bold mb-2">Your Shareable Student Link</h6>
         <div class="input-group justify-content-center">
             <input type="text" class="form-control text-center bg-white" style="max-width: 400px;" 
-                   value="{{ request.url_root }}p/{{ session.get('slug', 'your-slug') }}" readonly>
+              value="{{ url_for('main.student_form', slug=professor['slug'], _external=True) }}" readonly>
         </div>
         <small class="text-muted mt-2 d-block">Send this exact link to your students to collect their availability.</small>
       </div>
       
       <div class="section">
-        <h2>Student Availability Inputs</h2>
-        {% if submissions %}
-          {% for submission in submissions %}
-            <div class="blockout-item">
-              <strong>{{ submission.participant_name }} ({{ submission.participant_email }})</strong>
-              <div>
-                {% for avail in submission.availability %}
-                  <div style="margin-bottom: 4px;">{{ avail.day }}: {{ avail.start_time }} - {{ avail.end_time }} ({{ avail.block_type }})</div>
-                {% endfor %}
-              </div>
-            </div>
-          {% endfor %}
-        {% else %}
-          <div class="no-data">No availability inputs yet.</div>
-        {% endif %}
+        <details>
+          <summary style="outline: none; user-select: none; cursor: pointer; list-style-position: inside;">
+            <h2 style="display: inline-block; width: calc(100% - 25px); margin-bottom: 15px; border-bottom: 2px solid #e5e7eb; padding-bottom: 8px;">
+              Student Availability Inputs
+              <span style="font-size: 0.5em; color: #94a3b8; font-weight: normal; float: right; margin-top: 10px;">Click to expand</span>
+            </h2>
+          </summary>
+          
+          <div style="margin-top: 10px; cursor: default;">
+            {% if submissions %}
+              {% for submission in submissions %}
+                
+                <details class="blockout-item" style="cursor: pointer;">
+                  <summary style="font-weight: bold; outline: none; user-select: none;">
+                    {{ submission.participant_name }} ({{ submission.participant_email }})
+                    <span class="badge bg-secondary rounded-pill float-end">{{ submission.availability|length }} slots</span>
+                  </summary>
+                  
+                  <div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #cbd5e1; color: #475569; cursor: default;">
+                    {% for avail in submission.availability %}
+                      <div style="margin-bottom: 6px; padding-left: 10px; border-left: 3px solid #94a3b8;">
+                        <strong>{{ avail.day }}</strong>: {{ avail.start_time }} - {{ avail.end_time }}
+                      </div>
+                    {% endfor %}
+                  </div>
+                </details>
+
+              {% endfor %}
+            {% else %}
+              <div class="no-data">No availability inputs yet.</div>
+            {% endif %}
+          </div>
+        </details>
       </div>
       
       <div class="section">

@@ -1,0 +1,256 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Is Anybody Free</title>
+    <style>
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      * { box-sizing: border-box; }
+      html, body { height: 100%; }
+      body { font-family: Arial, sans-serif; display: flex; align-items: flex-start; justify-content: center; min-height: 100vh; margin: 0; padding: 12px; background: #CCCCCC; }
+      .card { background: #F5F5F5; border-radius: 18px; box-shadow: 0 20px 60px rgba(0,0,0,0.08); padding: 20px; width: min(100%, 1100px); max-height: calc(100vh - 24px); overflow: hidden; }
+      h1 { margin-top: 0; text-align: center; color: #FF7F00; text-shadow: -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000, 1px 1px 0 #000; }
+      .field { display: grid; gap: 4px; margin-bottom: 16px; text-align: left; color: #333333; }
+      .field label { display: block; font-weight: 700; margin-bottom: 2px; width: 100%; max-width: 320px; margin-left: auto; margin-right: auto; }
+      .field-row { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+      .field-row .field { margin-bottom: 16px; }
+      .horizontal-layout { display: grid; grid-template-columns: minmax(320px, 380px) minmax(0, 1fr); gap: 28px; align-items: stretch; }
+      .form-panel { display: flex; flex-direction: column; justify-content: space-between; gap: 16px; height: 100%; }
+      .grid-container { margin-top: 0; padding: 18px; border: 1.5px solid #D3D3D3; border-radius: 16px; background: rgba(255, 111, 0, 0.15); box-shadow: inset 0 0 0 1px rgba(211, 211, 211, 0.3); }
+      .grid-title { margin-bottom: 8px; font-weight: 500; font-size: 1.2rem; text-align: center; color: #333333; }
+      .grid-legend { margin-bottom: 12px; color: #666666; font-size: 0.9rem; text-align: center; }
+      .schedule-grid { display: grid; gap: 1px; border-radius: 12px; background: #D3D3D3; overflow: auto; max-height: 400px; touch-action: none; }
+      .grid-header-row, .grid-row { display: grid; grid-template-columns: 72px repeat(5, minmax(0, 1fr)); gap: 1px; }
+      .grid-header-row { position: static; top: 0; z-index: 1; min-height: 44px; border-bottom: 2px solid #D3D3D3; }
+      .grid-header-row > div { display: flex; align-items: center; justify-content: center; min-height: 34px; background: #F5F5F5; }
+      .grid-title { margin-bottom: 8px; font-weight: 700; font-size: 1.2rem; text-align: center; color: #333333; }
+      .grid-day-label { padding: 4px 4px; font-weight: 700; text-align: center; background: #F5F5F5; border-bottom: 1px solid #D3D3D3; font-size: 0.9rem; color: #333333; }
+      .time-label { display: flex; align-items: center; justify-content: center; padding: 6px 6px; background: #F5F5F5; font-size: 0.8rem; color: #333333; border-right: 1px solid #D3D3D3; }
+      .grid-cell { width: 100%; min-height: 22px; border: none; background: #ffffff; cursor: pointer; }
+      .grid-cell.selected { background: #FF6F00; }
+      .grid-cell:hover { background: #FFAB66; }
+      .hour-row .time-label { background: #D3D3D3; }
+      .hour-row .grid-cell { background: #F0F0F0; }
+      .hour-row .grid-cell:hover { background: #E0E0E0; }
+      .hour-row .grid-cell.selected { background: #FF6F00; }
+      .blockouts { margin-top: 20px; max-height: none; overflow: visible; }
+      .blockout-item { background: #f8fafc; border-radius: 10px; padding: 10px 12px; margin-bottom: 10px; min-height: 54px; }
+      .blockout-item strong { display: block; margin-bottom: 4px; }
+      .grid-cell:focus { outline: none; }
+      input, select { width: 100%; max-width: 320px; padding: 10px 12px; border-radius: 8px; border: 1px solid #D3D3D3; font-size: 0.95rem; margin: 0 auto; text-align: left; }
+      button[type="submit"] { background: #FF7F00; border: 1px solid #000000; color: #000000; padding: 12px 18px; border-radius: 10px; font-size: 1.1rem; cursor: pointer; width: 100%; max-width: 280px; margin: 0 auto; display: block; }
+      button[type="submit"]:hover { background: #FF6F00; }
+      @media (max-width: 900px) {
+        body { padding: 10px; }
+        .card { padding: 16px; }
+        .horizontal-layout { grid-template-columns: 1fr; }
+        .grid-header-row, .grid-row { grid-template-columns: 58px repeat(5, minmax(0, 1fr)); }
+        .grid-day-label, .time-label { font-size: 0.75rem; padding: 5px 4px; }
+      }
+      @media (max-width: 640px) {
+        .schedule-grid { max-height: 200px; }
+        .grid-header-row, .grid-row { grid-template-columns: 58px repeat(5, minmax(0, 1fr)); }
+        .field-row { grid-template-columns: 1fr; }
+      }
+      @media (max-width: 480px) {
+        .grid-header-row, .grid-row { grid-template-columns: 70px repeat(5, 1fr); }
+        .time-label { font-size: 0.8rem; padding: 5px 6px; }
+        .grid-cell { min-height: 24px; }
+        .grid-day-label { font-size: 0.8rem; padding: 5px 4px; }
+        .schedule-grid { max-height: 250px; }
+        .card { padding: 12px; }
+        body { padding: 8px; }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <h1>Submit Availability to {{ professor.name }}</h1>
+      <p style="text-align: center; color: #333333;">Select your available time slots by clicking and dragging on the grid. Resubmitting with the same email overwrites previous data.</p>
+
+      <form method="post" id="availability-form" action="{{ url_for('main.student_form', slug=professor.slug)}}">
+        <input type="hidden" name="professor_id" value="{{ professor.id }}">
+
+        <div class="horizontal-layout">
+          <div class="form-panel">
+            <div>
+              <div class="field">
+                <label for="participant_name">Name</label>
+                <input id="participant_name" name="participant_name" type="text" placeholder="Your name" required>
+              </div>
+
+              <div class="field">
+                <label for="participant_email">Email</label>
+                <div style="display: flex; gap: 8px; width: 100%; max-width: 320px; margin: 0 auto;">
+                  <input id="participant_email" name="participant_email" type="email" placeholder="your_email@onu.edu" required style="margin: 0;">
+                  <button type="button" id="load-btn" onclick="loadMySchedule(event)" style="background: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; width: auto;">Load</button>                </div>
+                <small style="color: #666; text-align: center; display: block; margin-top: 4px;">Already submitted? Enter email and click Load.</small>
+              </div>
+              </div>
+
+            <button type="submit">Submit availability</button>
+          </div>
+
+          <div class="grid-container">
+            <div class="grid-title">Availability grid</div>
+            <div class="grid-legend">Click and drag to select available slots.</div>
+            <div class="schedule-grid" id="schedule-grid"></div>
+          </div>
+        </div>
+
+        <input type="hidden" name="selected_slots" id="selected_slots">
+      </form>
+
+      <script>
+        const days = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
+        const startHour = 8;
+        const endHour = 18;
+        const grid = document.getElementById("schedule-grid");
+        const selectedSlotsInput = document.getElementById("selected_slots");
+        let isMouseDown = false;
+        let selecting = true;
+
+        function formatTime(hour, minute) {
+          const period = hour >= 12 ? 'PM' : 'AM';
+          const displayHour = hour % 12 || 12;
+          return `${displayHour}:${minute.toString().padStart(2, "0")} ${period}`;
+        }
+
+        function createCell(day, time) {
+          const cell = document.createElement("button");
+          cell.type = "button";
+          cell.className = "grid-cell";
+          cell.dataset.day = day;
+          cell.dataset.time = time;
+          cell.title = `${day} ${time}`;
+          cell.addEventListener("pointerdown", (event) => {
+            event.preventDefault();
+            isMouseDown = true;
+            selecting = !cell.classList.contains("selected");
+            toggleCell(cell, selecting);
+          });
+          cell.addEventListener("pointerenter", () => {
+            if (isMouseDown) {
+              toggleCell(cell, selecting);
+            }
+          });
+          return cell;
+        }
+
+        function toggleCell(cell, state) {
+          cell.classList.toggle("selected", state);
+        }
+
+        function buildGrid() {
+          const header = document.createElement("div");
+          header.className = "grid-header-row";
+          header.appendChild(document.createElement("div"));
+          days.forEach((day) => {
+            const dayLabel = document.createElement("div");
+            dayLabel.className = "grid-day-label";
+            dayLabel.textContent = day;
+            header.appendChild(dayLabel);
+          });
+          grid.appendChild(header);
+
+          for (let hour = startHour; hour < endHour; hour++) {
+            for (const minute of [0, 30]) {
+              const row = document.createElement("div");
+              row.className = "grid-row";
+              if (hour % 2 === 0) {
+                row.classList.add("hour-row");
+              }
+              const timeLabel = document.createElement("div");
+              timeLabel.className = "time-label";
+              timeLabel.textContent = formatTime(hour, minute);
+              row.appendChild(timeLabel);
+              days.forEach((day) => {
+                row.appendChild(createCell(day, formatTime(hour, minute)));
+              });
+              grid.appendChild(row);
+            }
+          }
+        }
+
+        function collectSlots() {
+          const selected = [];
+          document.querySelectorAll(".grid-cell.selected").forEach((cell) => {
+            selected.push(`${cell.dataset.day}|${cell.dataset.time}`);
+          });
+          selectedSlotsInput.value = selected.join(",");
+        }
+
+        document.addEventListener("pointerup", () => {
+          isMouseDown = false;
+        });
+
+        document.getElementById("availability-form").addEventListener("submit", (event) => {
+          collectSlots();
+          if (!selectedSlotsInput.value) {
+            event.preventDefault();
+            alert("Please select at least one available slot before submitting.");
+          }
+        });
+
+        // --- NEW: Bulletproof Load Existing Schedule Logic ---
+        async function loadMySchedule(event) {
+          // This line strictly forbids the browser from submitting the main form!
+          event.preventDefault(); 
+          
+          const email = document.getElementById("participant_email").value.trim();
+          const loadBtn = document.getElementById("load-btn");
+          
+          if (!email) {
+            alert("Please type your email address first so we can find your schedule!");
+            return;
+          }
+          
+          loadBtn.textContent = "Loading...";
+          loadBtn.disabled = true;
+          
+          try {
+            // Safely package the email address to send to the server
+            const url = `/api/student/load?slug={{ professor.slug }}&email=${encodeURIComponent(email)}`;
+            const response = await fetch(url);
+            const data = await response.json();
+            
+            if (data.slots && data.slots.length > 0) {
+              // Auto-fill the name
+              if (data.name) {
+                document.getElementById("participant_name").value = data.name;
+              }
+              
+              // Erase current grid selections
+              document.querySelectorAll('.grid-cell.selected').forEach(cell => {
+                cell.classList.remove('selected');
+              });
+              
+              // Paint the saved slots back onto the grid
+              data.slots.forEach(slotStr => {
+                const [day, time] = slotStr.split('|');
+                const cell = document.querySelector(`.grid-cell[data-day="${day}"][data-time="${time}"]`);
+                if (cell) {
+                  cell.classList.add('selected');
+                }
+              });
+              
+              alert("Schedule loaded! You can now edit your grid and click Submit.");
+            } else {
+              alert("We couldn't find an existing schedule for that email.");
+            }
+          } catch (error) {
+            console.error("Load Error:", error);
+            alert("Oops, something went wrong talking to the server.");
+          } finally {
+            loadBtn.textContent = "Load";
+            loadBtn.disabled = false;
+          }
+        }
+
+        buildGrid();
+      </script>
+    </div>
+  </body>
+</html>

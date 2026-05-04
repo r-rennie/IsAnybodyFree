@@ -24,16 +24,16 @@
                     <form method="POST" action="{{ url_for('main.register') }}">
                         <div class="mb-3">
                             <label class="form-label text-muted fw-semibold">Display Name</label>
-                            <input type="text" name="name" class="form-control" required placeholder="e.g., Dr. Kropp">
+                            <input type="text" name="name" class="form-control" required placeholder="Your Name">
                             <div class="form-text">This will be used to generate your custom student link.</div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label text-muted fw-semibold">ONU Email Address</label>
-                            <input type="email" name="email" class="form-control" required placeholder="professor@onu.edu">
+                            <input type="email" name="email" class="form-control" required placeholder="Email">
                         </div>
                         <div class="mb-4">
                             <label class="form-label text-muted fw-semibold">Password</label>
-                            <input type="password" name="password" class="form-control" required minlength="6">
+                            <input type="password" name="password" class="form-control" required minlength="6" placeholder="Password">
                         </div>
                         <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">Sign Up</button>
                     </form>

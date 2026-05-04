@@ -1,70 +1,64 @@
+
 # ROBOTS.md
 
 ## Project structure
 
-- `main.py` - Flask web application entrypoint
-- `README.md` - project overview and usage notes
-- `requirements.txt` - Python dependency manifest
-- `.venv/` - local Python virtual environment (not usually committed)
+- `app/` - core application directory (Application Factory pattern)
+  - `__init__.py` - initializes Flask app and registers blueprints
+  - `db.py` - database connection and initialization logic
+  - `routes.py` - primary routing for admin and student views
+  - `templates/` - HTML files (`index.html`, `admin.html`, `student_form.html`)
+- `instance/` - contains the live SQLite database (`isanybodyfree.sqlite`)
+- `requirements.txt` - Python dependency manifest (Flask, Pytest, etc.)
+- `pytest.ini` - configuration for automated testing suite
 
 ## Current app state
 
-- Minimal Flask app serving a homepage with a "Hello world" heading and a single button
-- Running locally on `http://127.0.0.1:5000/`
+- Production-ready Flask app deployed to **PythonAnywhere**
+- Features a dynamic landing page, professor dashboard, and unique student submission links
+- Live at `https://isanybodyfree.pythonanywhere.com/`
 
 ## Deployment intent
 
-- Target free hosting on Render for the Flask app
-- Later integration of AI-driven availability analysis for office hours scheduling
+- Successfully migrated from local development to PythonAnywhere cloud hosting
+- Transitioned to a "manual configuration" WSGI setup to support Application Factory architecture
 
 ## Suggested project structure
 
-- `main.py` - app startup script
 - `app/`
-  - `__init__.py` - create Flask app instance
-  - `routes.py` - page routes and request handling
-  - `services.py` - availability calculation and recommendation logic
-  - `models.py` - data structures for schedules and results
-  - `templates/` - HTML templates (`index.html`)
-  - `static/` - CSS, JavaScript, images
-- `requirements.txt` - dependencies
-- `ROBOTS.md` - project plan and structure updates
-- `README.md` - usage and deployment instructions
+  - `__init__.py` - Factory initialization
+  - `routes.py` - Request handling (using `main_bp` blueprint)
+  - `db.py` - SQLite helper functions
+  - `templates/` - UI files (Separated landing, admin, and student form views)
+  - `static/` - CSS and styling assets
+- `tests/` - Pytest suite for route and database validation
+- `requirements.txt` - Deployment dependencies
+- `ROBOTS.md` - Deployment reference and project evolution log
 
 ## Implementation plan
 
-1. Start small
-   - Keep the current Flask app as a single-page prototype
-   - Replace the button with a schedule entry form
-2. Collect student availability
-   - Let students block out class and work times by day/time
-   - Use simple inputs like day selectors + start/end times
-   - Store submissions in-memory first, then add lightweight persistence
-3. Support multiple submissions per device
-   - Add participant identity fields such as name and email
-   - Save each submission with an owner field in the database
-   - Do not tie entries to browser session only, so multiple people can submit from the same device
-   - Optionally verify email later via confirmation token or code if desired
-4. Build availability logic
-   - Create a service that computes open professor slots from student blocks
-   - Start with deterministic rules (e.g. time ranges with fewest conflicts)
-5. Improve interface to a grid-style layout
-   - Once basic submission and persistence work, upgrade the frontend to a calendar/grid view
-   - A `when2meet`-style table is a good long-term UX goal
-   - For now, use a form-based entry flow and show a simple availability summary first
-6. Add recommendation output
-   - Show the best candidate office-hour windows on the web page
-   - Keep it simple: top 3 recommended times first
-7. Integrate AI/ML later
-   - Once schedule collection and output works, add a model layer
-   - Use the existing time-slot results as model input
-   - The model can learn to prefer certain days, durations, or student patterns
+1. **Start small** (COMPLETED)
+   - Prototype evolved from "Hello World" to a functional scheduler.
+2. **Collect student availability** (COMPLETED)
+   - Implemented drag-select grid for intuitive time blocking.
+3. **Support multiple submissions per device** (COMPLETED)
+   - Database schema uses `participant_name` and `email` to allow shared device usage.
+4. **Build availability logic** (COMPLETED)
+   - `compute_best_office_hours` algorithm identifies optimal slots based on student density.
+5. **Improve interface to a grid-style layout** (COMPLETED)
+   - Integrated full-week grid for both submission and results display.
+6. **Add recommendation output** (COMPLETED)
+   - Dashboard now displays top recommended windows with coverage percentages.
+7. **Production Hardening** (IN PROGRESS)
+   - Scrubbed hardcoded test data (e.g., `kropp@onu.edu`).
+   - Refined URL generation using `url_for` with `_external=True`.
+   - Separated Landing Page logic from Student Submission logic.
 
 ## Next step
 
-- `2026-04-17` - Plan the schedule input and availability service as the next development target
-- `2026-04-17` - Added schedule blockout form and in-memory student availability submission flow
-- `2026-04-17` - Added SQLite persistence for student blockouts and database schema initialization
-- `2026-04-17` - Updated the form to capture participant name/email so multiple people can submit from the same device
-- `2026-04-17` - Replaced dropdown selectors with a drag-select availability grid like a when2meet layout
-- `2026-04-17` - Removed saved submissions from the student page so the admin panel can own that view later
+- `2026-04-17` - Added SQLite persistence and drag-select grid layout.
+- `2026-04-30` - Refined admin dashboard to group submissions by student.
+- `2026-05-02` - **DEPLOYMENT:** Successfully launched live on PythonAnywhere.
+- `2026-05-02` - Updated landing page to improve user UX/navigation.
+- `2026-05-02` - Fixed dynamic slug generation for professor shareable links.
+- `2026-05-02` - Scrubbed PII/test emails from codebase and updated ROBOTS.md documentation.
