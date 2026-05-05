@@ -53,10 +53,13 @@
         gap: 1px; 
         border-radius: 12px; 
         background: #D3D3D3; 
-        overflow-x: auto; 
+        width: 100%;
         max-height: 400px; 
-        touch-action: none;
-        width: 100%; 
+        overflow-y: auto; 
+        overflow-x: auto;
+
+        touch-action: pan-y; 
+        -webkit-overflow-scrolling: touch;
       }
       .grid-header-row, .grid-row { 
         display: grid; 
@@ -144,12 +147,20 @@
 
               <div class="field">
                 <label for="participant_email">Email</label>
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; width: 100%; max-width: 320px; margin: 0 auto;">
-                  <input id="participant_email" name="participant_email" type="email" placeholder="your_email@onu.edu" required style="margin: 0;">
-                  <button type="button" id="load-btn" onclick="loadMySchedule(event)" style="background: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: bold; width: auto;">Load</button>
-                </div>
-                <small style="color: #666; text-align: center; display: block; margin-top: 4px;">Already submitted? Enter email and click Load.</small>
+                <input id="participant_email" name="participant_email" type="email" placeholder="your_email@onu.edu" required>
+                <small style="color: #666; text-align: center; display: block; margin-top: 4px; margin-bottom: 12px;">
+                  Already submitted? Enter email and click Load.
+                </small>
+                
+                <button type="button" id="load-btn" onclick="loadMySchedule(event)" 
+                        style="background: #e5e7eb; border: 1px solid #d1d5db; color: #374151; padding: 10px 12px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; max-width: 320px; margin: 0 auto; display: block;">
+                  Load My Previous Schedule
+                </button>
               </div>
+            </div>
+
+            <div style="margin-top: auto; padding-top: 20px;">
+              <button type="submit">Submit availability</button>
             </div>
           </div>
 
@@ -158,10 +169,6 @@
             <div class="grid-legend">Click and drag to select available slots.</div>
             <div class="schedule-grid" id="schedule-grid"></div>
           </div>
-        </div>
-
-        <div style="margin-top: 32px; padding-bottom: 20px;">
-          <button type="submit">Submit availability</button>
         </div>
 
         <input type="hidden" name="selected_slots" id="selected_slots">
@@ -190,17 +197,36 @@
           cell.dataset.day = day;
           cell.dataset.time = time;
           cell.title = `${day} ${time}`;
+
+          // This handles the initial touch/click
           cell.addEventListener("pointerdown", (event) => {
             event.preventDefault();
+            // This 'locks' the touch to the grid so it doesn't scroll the page
+            cell.setPointerCapture(event.pointerId); 
+            
             isMouseDown = true;
             selecting = !cell.classList.contains("selected");
             toggleCell(cell, selecting);
           });
+
+          // This handles moving the finger/mouse across cells
           cell.addEventListener("pointerenter", () => {
             if (isMouseDown) {
               toggleCell(cell, selecting);
             }
           });
+
+          // For mobile specifically: detecting 'entry' into other cells while moving
+          cell.addEventListener("pointermove", (event) => {
+            if (isMouseDown) {
+              // Find what element is currently under the finger
+              const target = document.elementFromPoint(event.clientX, event.clientY);
+              if (target && target.classList.contains("grid-cell")) {
+                toggleCell(target, selecting);
+              }
+            }
+          });
+
           return cell;
         }
 
@@ -248,8 +274,12 @@
           selectedSlotsInput.value = selected.join(",");
         }
 
-        document.addEventListener("pointerup", () => {
+        document.addEventListener("pointerup", (event) => {
           isMouseDown = false;
+          // This ensures the browser goes back to normal scrolling mode
+          if (event.target instanceof Element) {
+            event.target.releasePointerCapture(event.pointerId);
+          }
         });
 
         // Submitting entries; if there are no slots selected, it prompts the student to enter at least one available time
